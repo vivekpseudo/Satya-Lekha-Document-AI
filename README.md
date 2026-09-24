@@ -160,3 +160,34 @@ psql "$DATABASE_URL" -f app/schema.sql
 ```
 
 The current database layer is a prototype. Add Alembic migrations before production deployment.
+
+
+## Compliance rules engine
+
+`POST /api/v1/compliance/evaluate`
+
+The prototype rules engine evaluates normalized financial facts and returns structured findings:
+
+- `PASS`
+- `FAIL`
+- `REVIEW`
+
+Every finding carries a rule ID, severity, message, confidence and source evidence.
+
+The initial rules are deliberately limited to structural/data-quality checks. Regulatory assertions must be linked to authoritative Ind AS/SEBI/RBI source material and effective dates before production compliance use.
+
+## Classification evaluation
+
+`tests/test_labeled_classifier_fixture.py` provides a small synthetic fixture to validate the classifier contract. It is **not** a substitute for a real annual-report corpus.
+
+For meaningful classification evaluation, create a versioned dataset with document/page-level labels for:
+
+- balance sheet
+- statement of profit and loss
+- cash flow statement
+- notes to accounts
+- accounting policies
+- auditor report
+- other schedules
+
+Recommended metrics: macro F1, per-class precision/recall, confusion matrix, and abstention/review rate.
