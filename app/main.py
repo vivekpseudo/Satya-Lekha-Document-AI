@@ -1,13 +1,15 @@
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
+from app.classifier import classify_document
 from app.config import get_settings
 from app.document_ai import DocumentAIService
+from app.financial_normalizer import classify_statement_rows, normalize_table_rows
 from app.normalizer import normalize_document
 
 app = FastAPI(
     title="Satya-Lekha Document AI",
-    version="0.1.0",
-    description="Google Document AI ingestion service for Satya-Lekha.",
+    version="0.2.0",
+    description="Google Document AI ingestion, financial classification and normalization service.",
 )
 
 ALLOWED_MIME_TYPES = {
@@ -28,18 +30,12 @@ async def process_document(file: UploadFile = File(...)) -> dict:
     settings = get_settings()
 
     if file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(
-            status_code=415,
-            detail=f"Unsupported MIME type: {file.content_type}",
-        )
+        raise HTTPException(status_code=415, detail=f"Unsupported MIME type: {file.content_type}")
 
     content = await file.read()
     max_bytes = settings.max_upload_mb * 1024 * 1024
     if len(content) > max_bytes:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File exceeds {settings.max_upload_mb} MB limit.",
-        )
+        raise HTTPException(status_code=413, detail=f"File exceeds {settings.max_upload_mb} MB limit.")
 
     service = DocumentAIService(
         project_id=settings.google_cloud_project,
@@ -50,12 +46,41 @@ async def process_document(file: UploadFile = File(...)) -> dict:
     try:
         document = service.process(content, file.content_type)
     except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Document AI processing failed: {exc}",
-        ) from exc
+        raise HTTPException(status_code=502, detail=f"Document AI processing failed: {exc}") from exc
 
     result = normalize_document(document)
+    classification = classify_document(result["text"])
+
+    normalized_tables = []
+    for page in result["pages"]:
+        for table in page["tables"]:
+            rows = normalize_table_rows(table["body_rows"], page["page_number"])
+            groups = classify_statement_rows(rows, classification.document_type)
+            normalized_tables.append({
+                "page_number": page["page_number"],
+                "header_rows": table["header_rows"],
+                "rows": [
+                    {
+                        "label": row.label,
+                        "values": [str(value) if value is not None else None for value in row.values],
+                        "source_page": row.source_page,
+                    }
+                    for row in rows
+                ],
+                "groups": {
+                    group: [row.label for row in grouped_rows]
+                    for group, grouped_rows in groups.items()
+                },
+            })
+
+    result["classification"] = {
+        "document_type": classification.document_type,
+        "confidence": classification.confidence,
+        "signals": classification.signals,
+    }
+    result["financial_normalization"] = {
+        "tables": normalized_tables,
+    }
     result["source"] = {
         "filename": file.filename,
         "mime_type": file.content_type,
