@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any, Callable
+from datetime import date
+from app.rule_registry import active_rule_ids
 
 
 @dataclass(frozen=True)
@@ -10,6 +12,8 @@ class RuleContext:
     jurisdiction: str = "IN"
     framework: str = "Ind AS"
     reporting_date: str | None = None
+    entity_type: str | None = None
+    listed: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -189,10 +193,7 @@ class ComplianceRulesEngine:
         regulation_provider: Callable[[str, RuleContext], list[RegulationEvidence]] | None = None,
     ) -> list[ComplianceFinding]:
         findings = []
-        for rule in self.rules:
-            if context.document_type not in rule.statement_types:
-                continue
-            regulations = (
+        active_ids = active_rule_ids(\n            jurisdiction=context.jurisdiction, framework=context.framework,\n            entity_type=context.entity_type, listed=context.listed,\n            reporting_date=date.fromisoformat(context.reporting_date) if context.reporting_date else None,\n        )\n        for rule in self.rules:\n            if context.document_type not in rule.statement_types or rule.rule_id not in active_ids:\n                continue\n            regulations = (
                 regulation_provider(rule.rule_id, context)
                 if regulation_provider
                 else []
