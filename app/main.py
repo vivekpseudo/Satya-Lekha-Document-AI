@@ -12,6 +12,9 @@ from app.api_models import RegulationIn, RegulationSearchIn
 from app.regulatory_rag import add_regulation, retrieve_regulations, regulation_provider
 from app.rules_engine import ComplianceRulesEngine, RuleContext
 from app.finding_models import ComplianceEvaluateRequest, ComplianceFindingResponse
+from app.report_models import ComplianceReportRequest
+from app.report import build_compliance_report
+from fastapi.responses import FileResponse
 
 app = FastAPI(
     title="Satya-Lekha Document AI",
@@ -166,3 +169,23 @@ def evaluate_compliance(\n    payload: ComplianceEvaluateRequest,\n    session: 
         else None
     )
     return ComplianceRulesEngine().evaluate(context, regulation_provider=provider)
+
+from pathlib import Path
+
+
+@app.post("/api/v1/compliance/report")
+def generate_compliance_report(payload: ComplianceReportRequest):
+    output = Path("/tmp") / "satya_lekha_compliance_report.pdf"
+    build_compliance_report(
+        str(output),
+        company_name=payload.company_name,
+        document_name=payload.document_name,
+        reporting_date=payload.reporting_date,
+        classification=payload.classification,
+        findings=payload.findings,
+    )
+    return FileResponse(
+        path=output,
+        media_type="application/pdf",
+        filename="satya_lekha_compliance_report.pdf",
+    )
