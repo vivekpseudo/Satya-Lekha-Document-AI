@@ -215,6 +215,8 @@ The system now generates a final compliance report as a PDF:
 
 The report includes:
 
+- A first-page executive summary with PASS / FAIL / REVIEW counts and interpretation
+
 - company and source-document metadata
 - document classification and confidence
 - PASS / FAIL / REVIEW summary
