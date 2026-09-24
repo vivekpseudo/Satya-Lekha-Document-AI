@@ -9,7 +9,7 @@ from app.normalizer import normalize_document
 from app.db import get_db
 from app.storage import save_processed_document
 from app.api_models import RegulationIn, RegulationSearchIn
-from app.regulatory_rag import add_regulation, retrieve_regulations
+from app.regulatory_rag import add_regulation, retrieve_regulations, regulation_provider
 from app.rules_engine import ComplianceRulesEngine, RuleContext
 from app.finding_models import ComplianceEvaluateRequest, ComplianceFindingResponse
 
@@ -149,7 +149,7 @@ def search_regulations(
 
 
 @app.post("/api/v1/compliance/evaluate")
-def evaluate_compliance(payload: ComplianceEvaluateRequest) -> list[ComplianceFindingResponse]:
+def evaluate_compliance(\n    payload: ComplianceEvaluateRequest,\n    session: Session = Depends(get_db),\n) -> list[ComplianceFindingResponse]:
     context = RuleContext(
         document_type=payload.document_type,
         facts=payload.facts,
@@ -157,4 +157,13 @@ def evaluate_compliance(payload: ComplianceEvaluateRequest) -> list[ComplianceFi
         framework=payload.framework,
         reporting_date=payload.reporting_date,
     )
-    return ComplianceRulesEngine().evaluate(context)
+    provider = (
+        regulation_provider(
+            session,
+            as_of=payload.reporting_date,
+            top_k=payload.regulation_top_k,
+        )
+        if payload.retrieve_regulations
+        else None
+    )
+    return ComplianceRulesEngine().evaluate(context, regulation_provider=provider)
