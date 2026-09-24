@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     document_ai_location: str = "us"
     document_ai_processor_id: str
     max_upload_mb: int = 20
+    database_url: str = "postgresql+psycopg://satya:satya@localhost:5432/satya_lekha"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
