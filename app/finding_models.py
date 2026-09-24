@@ -7,6 +7,8 @@ class ComplianceEvaluateRequest(BaseModel):
     jurisdiction: str = "IN"
     framework: str = "Ind AS"
     reporting_date: str | None = None
+    retrieve_regulations: bool = True
+    regulation_top_k: int = Field(default=3, ge=1, le=10)
 
 
 class ComplianceFindingResponse(BaseModel):
@@ -16,4 +18,5 @@ class ComplianceFindingResponse(BaseModel):
     title: str
     message: str
     evidence: list[dict]
+    regulatory_evidence: list[dict]
     confidence: float = Field(ge=0, le=1)
