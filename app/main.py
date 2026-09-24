@@ -1,10 +1,15 @@
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from sqlalchemy.orm import Session
 
 from app.classifier import classify_document
 from app.config import get_settings
 from app.document_ai import DocumentAIService
 from app.financial_normalizer import classify_statement_rows, normalize_table_rows
 from app.normalizer import normalize_document
+from app.db import get_db
+from app.storage import save_processed_document
+from app.api_models import RegulationIn, RegulationSearchIn
+from app.regulatory_rag import add_regulation, retrieve_regulations
 
 app = FastAPI(
     title="Satya-Lekha Document AI",
@@ -87,3 +92,55 @@ async def process_document(file: UploadFile = File(...)) -> dict:
         "size_bytes": len(content),
     }
     return result
+
+
+@app.post("/api/v1/documents/process-and-store")
+async def process_and_store(
+    file: UploadFile = File(...),
+    session: Session = Depends(get_db),
+) -> dict:
+    result = await process_document(file)
+    document = save_processed_document(
+        session,
+        filename=file.filename,
+        mime_type=file.content_type or "application/octet-stream",
+        normalized=result,
+    )
+    return {
+        "document_id": document.id,
+        "document_type": document.document_type,
+        "classification_confidence": float(document.classification_confidence),
+        "financial_fact_count": len(document.facts),
+    }
+
+
+@app.post("/api/v1/regulations")
+def ingest_regulation(
+    payload: RegulationIn,
+    session: Session = Depends(get_db),
+) -> dict:
+    add_regulation(
+        session,
+        regulation_id=payload.regulation_id,
+        title=payload.title,
+        content=payload.content,
+        source_uri=payload.source_uri,
+        effective_from=payload.effective_from,
+        effective_to=payload.effective_to,
+    )
+    return {"status": "indexed", "regulation_id": payload.regulation_id}
+
+
+@app.post("/api/v1/regulations/search")
+def search_regulations(
+    payload: RegulationSearchIn,
+    session: Session = Depends(get_db),
+) -> dict:
+    return {
+        "query": payload.query,
+        "results": retrieve_regulations(
+            session,
+            query=payload.query,
+            top_k=payload.top_k,
+        ),
+    }
