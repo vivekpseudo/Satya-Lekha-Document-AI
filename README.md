@@ -205,3 +205,25 @@ The current rule IDs remain prototype identifiers. Before production compliance 
 ## Important design rule
 
 Satya-Lekha must not treat vector similarity as proof that a regulation applies. Retrieval is evidence discovery; deterministic rule metadata decides jurisdiction, framework, statement type, and effective-date applicability. The regulatory source remains authoritative.
+
+
+## Final PDF report
+
+The system now generates a final compliance report as a PDF:
+
+`POST /api/v1/compliance/report`
+
+The report includes:
+
+- company and source-document metadata
+- document classification and confidence
+- PASS / FAIL / REVIEW summary
+- each compliance rule finding
+- financial evidence and source pages
+- retrieved regulatory evidence
+- regulation IDs and source URIs
+- effective dates
+- confidence
+- methodology and limitations
+
+The PDF is generated with ReportLab and returned as `application/pdf`.
