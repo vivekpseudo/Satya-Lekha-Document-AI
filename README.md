@@ -128,3 +128,35 @@ pytest -q
 Before exposing this service publicly, add authentication/authorization, object storage, asynchronous processing, migrations (Alembic), audit logging, retention/deletion controls, request tracing, rate limits, tenant isolation, secrets management, encryption, and a labeled evaluation set.
 
 Never commit service-account keys or database credentials.
+
+
+## Persistence and RAG APIs
+
+### Store a processed document
+
+`POST /api/v1/documents/process-and-store`
+
+This runs Document AI + classification + normalization and persists the document and extracted financial facts in PostgreSQL.
+
+### Index a regulatory source
+
+`POST /api/v1/regulations`
+
+The service generates a `gemini-embedding-001` retrieval-document embedding and stores it with the regulation metadata. The implementation uses 768 dimensions to keep the pgvector schema compact; Google's current embedding API supports controlling output dimensionality. citeturn0search1
+
+### Search regulatory sources
+
+`POST /api/v1/regulations/search`
+
+The query is embedded as a retrieval query and searched with pgvector cosine distance. Results retain the regulation ID, source URI and effective dates so later compliance findings can cite the underlying source.
+
+## Database setup
+
+Run:
+
+```bash
+docker compose -f docker-compose.postgres.yml up -d
+psql "$DATABASE_URL" -f app/schema.sql
+```
+
+The current database layer is a prototype. Add Alembic migrations before production deployment.
