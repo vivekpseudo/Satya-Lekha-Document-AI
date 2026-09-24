@@ -7,6 +7,8 @@ class ComplianceEvaluateRequest(BaseModel):
     jurisdiction: str = "IN"
     framework: str = "Ind AS"
     reporting_date: str | None = None
+    entity_type: str | None = None
+    listed: bool | None = None
     retrieve_regulations: bool = True
     regulation_top_k: int = Field(default=3, ge=1, le=10)
 
