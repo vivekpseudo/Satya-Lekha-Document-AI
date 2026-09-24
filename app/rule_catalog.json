@@ -1,0 +1,23 @@
+{
+  "version": "0.1.0",
+  "jurisdiction": "IN",
+  "framework": "Ind AS",
+  "rules": [
+    {
+      "rule_id": "INDAS-FS-001",
+      "title": "Balance-sheet equation check",
+      "status": "prototype",
+      "description": "Checks extracted total assets against total liabilities plus total equity.",
+      "required_evidence": ["total assets", "total liabilities", "total equity"],
+      "source_reference": "Populate with an authoritative regulatory source before production use."
+    },
+    {
+      "rule_id": "DATA-QUALITY-001",
+      "title": "Revenue sign check",
+      "status": "prototype",
+      "description": "Flags extracted negative revenue for review.",
+      "required_evidence": ["revenue|turnover|sales"],
+      "source_reference": "Data-quality heuristic; not itself a regulatory requirement."
+    }
+  ]
+}
