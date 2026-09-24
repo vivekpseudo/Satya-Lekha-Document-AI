@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE IF NOT EXISTS regulation_chunks (
     id BIGSERIAL PRIMARY KEY,
     regulation_id VARCHAR(200) NOT NULL,
@@ -6,11 +8,11 @@ CREATE TABLE IF NOT EXISTS regulation_chunks (
     source_uri TEXT NOT NULL,
     effective_from DATE,
     effective_to DATE,
-    embedding vector(768)
+    embedding vector(768) NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS regulation_chunks_regulation_id_idx
     ON regulation_chunks (regulation_id);
 
--- Install/enable pgvector before running this table:
--- CREATE EXTENSION IF NOT EXISTS vector;
+CREATE INDEX IF NOT EXISTS regulation_chunks_embedding_idx
+    ON regulation_chunks USING hnsw (embedding vector_cosine_ops);
