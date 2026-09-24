@@ -143,6 +143,32 @@ def build_compliance_report(
             "This report is an analytical output and is not, by itself, a statutory audit opinion or legal opinion.",
             styles["CoverSub"],
         ),
+        Paragraph("EXECUTIVE SUMMARY", styles["CoverTitle"]),
+        Paragraph(
+            "Automated assessment of extracted financial statements against the configured Satya-Lekha compliance rules and retrieved regulatory evidence.",
+            styles["CoverSub"],
+        ),
+        Spacer(1, 10 * mm),
+        Table(
+            [["Outcome", "Count"],
+             ["PASS", str(counts.get("PASS", 0))],
+             ["FAIL", str(counts.get("FAIL", 0))],
+             ["REVIEW", str(counts.get("REVIEW", 0))]],
+            colWidths=[55 * mm, 30 * mm],
+            hAlign="CENTER",
+            style=TableStyle([
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ALIGN", (1, 1), (1, -1), "CENTER"),
+            ]),
+        ),
+        Spacer(1, 10 * mm),
+        Paragraph("Overall interpretation", styles["Heading3"]),
+        Paragraph(
+            "FAIL findings identify rule checks whose configured conditions were not satisfied. REVIEW findings indicate that the available extraction, applicability metadata, or source evidence requires human verification.",
+            styles["BodyText"],
+        ),
         PageBreak(),
         Paragraph("Executive Summary", styles["Heading2"]),
     ]
