@@ -10,6 +10,8 @@ from app.db import get_db
 from app.storage import save_processed_document
 from app.api_models import RegulationIn, RegulationSearchIn
 from app.regulatory_rag import add_regulation, retrieve_regulations
+from app.rules_engine import ComplianceRulesEngine, RuleContext
+from app.finding_models import ComplianceEvaluateRequest, ComplianceFindingResponse
 
 app = FastAPI(
     title="Satya-Lekha Document AI",
@@ -144,3 +146,15 @@ def search_regulations(
             top_k=payload.top_k,
         ),
     }
+
+
+@app.post("/api/v1/compliance/evaluate")
+def evaluate_compliance(payload: ComplianceEvaluateRequest) -> list[ComplianceFindingResponse]:
+    context = RuleContext(
+        document_type=payload.document_type,
+        facts=payload.facts,
+        jurisdiction=payload.jurisdiction,
+        framework=payload.framework,
+        reporting_date=payload.reporting_date,
+    )
+    return ComplianceRulesEngine().evaluate(context)
