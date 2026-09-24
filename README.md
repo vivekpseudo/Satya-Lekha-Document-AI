@@ -191,3 +191,17 @@ For meaningful classification evaluation, create a versioned dataset with docume
 - other schedules
 
 Recommended metrics: macro F1, per-class precision/recall, confusion matrix, and abstention/review rate.
+
+## Compliance + regulatory evidence
+
+The compliance endpoint now optionally retrieves regulatory evidence for each rule.
+
+`POST /api/v1/compliance/evaluate`
+
+Each finding can contain financial evidence plus regulatory evidence: regulation ID, title, source text, source URI, effective dates, and similarity. Regulatory retrieval is filtered by the reporting date before vector similarity ranking, so future/expired chunks are excluded for historical reporting periods.
+
+The current rule IDs remain prototype identifiers. Before production compliance use, populate their authoritative regulatory references and add rule-specific applicability conditions.
+
+## Important design rule
+
+Satya-Lekha must not treat vector similarity as proof that a regulation applies. Retrieval is evidence discovery; deterministic rule metadata decides jurisdiction, framework, statement type, and effective-date applicability. The regulatory source remains authoritative.
