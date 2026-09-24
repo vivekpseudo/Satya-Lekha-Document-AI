@@ -155,8 +155,7 @@ def evaluate_compliance(\n    payload: ComplianceEvaluateRequest,\n    session: 
         facts=payload.facts,
         jurisdiction=payload.jurisdiction,
         framework=payload.framework,
-        reporting_date=payload.reporting_date,
-    )
+        reporting_date=payload.reporting_date,\n        entity_type=payload.entity_type,\n        listed=payload.listed,\n    )
     provider = (
         regulation_provider(
             session,
