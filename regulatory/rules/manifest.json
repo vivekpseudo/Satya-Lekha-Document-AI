@@ -1,0 +1,20 @@
+{
+  "schema_version": "0.1.0",
+  "jurisdiction": "IN",
+  "rules": [
+    {
+      "rule_id": "INDAS-FS-001",
+      "regulators": ["MCA"],
+      "framework": "Ind AS",
+      "status": "prototype",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "DATA-QUALITY-001",
+      "regulators": [],
+      "framework": ["Ind AS", "Other"],
+      "status": "heuristic",
+      "source_status": "non-regulatory"
+    }
+  ]
+}
