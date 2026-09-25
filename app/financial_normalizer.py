@@ -11,6 +11,7 @@ class FinancialRow:
     label: str
     values: list[Decimal | None]
     source_page: int | None = None
+    bbox: dict | None = None
 
 
 def parse_amount(value: str) -> Decimal | None:
@@ -39,15 +40,23 @@ def normalize_table_rows(
     for row in rows:
         if not row:
             continue
-        label = " ".join((row[0] or "").split())
+        first = row[0] or {}
+        first_text = first.get("text", "") if isinstance(first, dict) else str(first)
+        label = " ".join(first_text.split())
         if not label:
             continue
 
-        values = [parse_amount(cell) for cell in row[1:]]
+        values = [
+            parse_amount(cell.get("text", "") if isinstance(cell, dict) else str(cell))
+            for cell in row[1:]
+        ]
         if not any(value is not None for value in values):
             continue
 
-        normalized.append(FinancialRow(label=label, values=values, source_page=source_page))
+        bbox = first.get("bbox") if isinstance(first, dict) else None
+        normalized.append(
+            FinancialRow(label=label, values=values, source_page=source_page, bbox=bbox)
+        )
 
     return normalized
 
