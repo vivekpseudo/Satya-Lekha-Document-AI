@@ -74,6 +74,11 @@ async def process_document(file: UploadFile = File(...)) -> dict:
                         "label": row.label,
                         "values": [str(value) if value is not None else None for value in row.values],
                         "source_page": row.source_page,
+                        "bbox": (
+                            table["body_rows"][row_index][0].get("bbox")
+                            if row_index < len(table["body_rows"]) and table["body_rows"][row_index]
+                            else None
+                        ),
                     }
                     for row in rows
                 ],
