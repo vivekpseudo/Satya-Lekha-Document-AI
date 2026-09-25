@@ -40,3 +40,12 @@ The current screen uses representative fixture data. Connect the existing FastAP
 - `POST /api/v1/compliance/evaluate`
 - `POST /api/v1/compliance/report`
 - `POST /api/v1/regulations/search`
+
+
+## Live workflow
+
+The UI now calls the FastAPI service for document processing, compliance evaluation and PDF report generation. Set `VITE_API_BASE_URL` for the backend URL.
+
+Evidence returned with page numbers and normalized bounding boxes is rendered as highlights and clickable audit pins. Selecting an evidence item navigates to its source page.
+
+The control score is calculated from the current rule findings (PASS = 100% contribution, REVIEW = 50%, FAIL = 0%) and is therefore a UI summary metric, not a statutory audit opinion.
