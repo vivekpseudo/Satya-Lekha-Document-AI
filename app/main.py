@@ -111,12 +111,52 @@ async def process_and_store(
         mime_type=file.content_type or "application/octet-stream",
         normalized=result,
     )
-    return {
-        "document_id": document.id,
-        "document_type": document.document_type,
-        "classification_confidence": float(document.classification_confidence),
-        "financial_fact_count": len(document.facts),
-    }
+    facts = []
+    for table in result.get("financial_normalization", {}).get("tables", []):
+        for row in table.get("rows", []):
+            values = row.get("values", [])
+            value = next((v for v in values if v is not None), None)
+            if value is None:
+                continue
+            facts.append({
+                "label": row.get("label", ""),
+                "value": value,
+                "source_page": row.get("source_page"),
+                "source_text": row.get("label", ""),
+                "bbox": row.get("bbox"),
+            })
+
+    context = RuleContext(
+        document_type=result["classification"]["document_type"],
+        facts=facts,
+        jurisdiction="IN",
+        framework="Ind AS",
+        reporting_date=result.get("reporting_date"),
+    )
+    provider = regulation_provider(
+        session,
+        as_of=context.reporting_date,
+        top_k=3,
+    )
+    findings = ComplianceRulesEngine().evaluate(context, regulation_provider=provider)
+
+    result["document_id"] = document.id
+    result["facts"] = facts
+    result["findings"] = [
+        {
+            "rule_id": finding.rule_id,
+            "status": finding.status,
+            "severity": finding.severity,
+            "title": finding.title,
+            "message": finding.message,
+            "evidence": finding.evidence,
+            "regulatory_evidence": finding.regulatory_evidence,
+            "confidence": finding.confidence,
+        }
+        for finding in findings
+    ]
+    result["document_name"] = file.filename or "Uploaded document"
+    return result
 
 
 @app.post("/api/v1/regulations")
@@ -152,13 +192,19 @@ def search_regulations(
 
 
 @app.post("/api/v1/compliance/evaluate")
-def evaluate_compliance(\n    payload: ComplianceEvaluateRequest,\n    session: Session = Depends(get_db),\n) -> list[ComplianceFindingResponse]:
+def evaluate_compliance(
+    payload: ComplianceEvaluateRequest,
+    session: Session = Depends(get_db),
+) -> list[ComplianceFindingResponse]:
     context = RuleContext(
         document_type=payload.document_type,
         facts=payload.facts,
         jurisdiction=payload.jurisdiction,
         framework=payload.framework,
-        reporting_date=payload.reporting_date,\n        entity_type=payload.entity_type,\n        listed=payload.listed,\n    )
+        reporting_date=payload.reporting_date,
+        entity_type=payload.entity_type,
+        listed=payload.listed,
+    )
     provider = (
         regulation_provider(
             session,
