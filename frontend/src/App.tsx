@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AuditOutlined,
   CheckCircleFilled,
@@ -18,8 +18,14 @@ import {
 } from "@ant-design/icons";
 import { Button, Dropdown, Progress, Tag, Upload, message } from "antd";
 import type { UploadProps } from "antd";
+import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from "pdfjs-dist";
 import { downloadComplianceReport, evaluateCompliance, processDocument } from "./api";
 import type { EvidenceBox, Finding, ProcessedDocument, Status } from "./types";
+
+GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url,
+).toString();
 
 const demo: ProcessedDocument = {
   document_name: "Acme Global Holdings — Annual Report FY2025",
@@ -166,7 +172,7 @@ function FindingCard({
   );
 }
 
-function PageViewer({
+function PdfJsViewer({
   document,
   page,
   selectedFinding,
@@ -179,93 +185,163 @@ function PageViewer({
   showPins: boolean;
   onPin: (finding: Finding, evidence: EvidenceBox) => void;
 }) {
-  const pageInfo = document.pages.find((item) => item.pageNumber === page);
-  const highlights = selectedFinding?.evidence
-    .map(normalizeEvidence)
-    .filter((e) => e.page === page && e.bbox) || [];
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
 
-  if (pageInfo?.imageUrl) {
+  useEffect(() => {
+    let cancelled = false;
+    setRenderError(null);
+
+    const source = document.document_url;
+    if (!source || !/\.pdf($|#)/i.test(source)) {
+      setPdf(null);
+      return;
+    }
+
+    const loadingTask = getDocument(source);
+    loadingTask.promise
+      .then((loaded) => {
+        if (!cancelled) setPdf(loaded);
+        else void loaded.destroy();
+      })
+      .catch((error) => {
+        if (!cancelled) setRenderError(error instanceof Error ? error.message : "Unable to load PDF");
+      });
+
+    return () => {
+      cancelled = true;
+      void loadingTask.destroy();
+    };
+  }, [document.document_url]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function renderPage() {
+      if (!pdf || !canvasRef.current) return;
+      try {
+        const pdfPage = await pdf.getPage(page);
+        const baseViewport = pdfPage.getViewport({ scale: 1 });
+        const availableWidth = Math.max(frameRef.current?.clientWidth || 760, 320);
+        const scale = Math.min(1.8, availableWidth / baseViewport.width);
+        const viewport = pdfPage.getViewport({ scale });
+        const canvas = canvasRef.current;
+        const context = canvas.getContext("2d");
+        if (!context) return;
+
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+        setViewportSize({ width: viewport.width, height: viewport.height });
+
+        await pdfPage.render({ canvasContext: context, viewport }).promise;
+        if (cancelled) context.clearRect(0, 0, canvas.width, canvas.height);
+      } catch (error) {
+        if (!cancelled) setRenderError(error instanceof Error ? error.message : "Unable to render PDF page");
+      }
+    }
+
+    void renderPage();
+    return () => { cancelled = true; };
+  }, [pdf, page]);
+
+  const pageEvidence = (document.findings || []).flatMap((finding) =>
+    finding.evidence.map((raw) => ({ finding, evidence: normalizeEvidence(raw) })),
+  ).filter(({ evidence }) => evidence.page === page && evidence.bbox);
+
+  const selectedEvidence = (selectedFinding?.evidence || [])
+    .map(normalizeEvidence)
+    .filter((evidence) => evidence.page === page && evidence.bbox);
+
+  if (!document.document_url || !/\.pdf($|#)/i.test(document.document_url)) {
     return (
-      <div className="document-image-wrap">
-        <img src={pageInfo.imageUrl} className="document-page-image" alt={`Page ${page}`} />
-        {showPins && document.findings.flatMap((finding) =>
-          finding.evidence.map((raw) => ({ finding, evidence: normalizeEvidence(raw) }))
-        ).filter(({ evidence }) => evidence.page === page && evidence.bbox).map(({ finding, evidence }, i) => (
-          <button
-            key={`${finding.rule_id}-${i}`}
-            className={`real-audit-pin ${finding.status.toLowerCase()}`}
-            style={{ left: `${(evidence.bbox!.x + evidence.bbox!.width) * 100}%`, top: `${evidence.bbox!.y * 100}%` }}
-            title={`${finding.title} — ${evidence.label || ""}`}
-            onClick={() => onPin(finding, evidence)}
-          >
-            {i + 1}
-          </button>
-        ))}
-        {highlights.map((evidence, i) => (
-          <div
-            key={i}
-            className="evidence-highlight"
-            style={{
-              left: `${evidence.bbox!.x * 100}%`,
-              top: `${evidence.bbox!.y * 100}%`,
-              width: `${evidence.bbox!.width * 100}%`,
-              height: `${evidence.bbox!.height * 100}%`,
-            }}
-          />
-        ))}
+      <div className="paper-viewer">
+        <div className="paper">
+          <div className="paper-header">
+            <div>
+              <h1>ACME GLOBAL HOLDINGS PVT. LTD.</h1>
+              <h2>CONSOLIDATED BALANCE SHEET</h2>
+              <p>As at March 31, 2025 and 2024</p>
+              <p>(Amounts in ₹ lakhs)</p>
+            </div>
+            <div className="exhibit">Page<br /><b>{page}</b><small>Document AI preview</small></div>
+          </div>
+          <div className="paper-rule" />
+          <div className="paper-section">ASSETS</div>
+          <div className="paper-subsection">Current Assets</div>
+          <table className="statement-table">
+            <tbody>
+              {[
+                ["Cash and cash equivalents", "₹184.50"],
+                ["Trade receivables, net", "₹92.40"],
+                ["Inventories, net", "₹148.20"],
+                ["Prepaid expenses and other current assets", "₹21.90"],
+              ].map(([label, value]) => (
+                <tr key={label}><td>{label}</td><td>{value}</td><td>₹142.20</td></tr>
+              ))}
+            </tbody>
+          </table>
+          {selectedEvidence.map((evidence, i) => (
+            <div key={i} className="evidence-highlight mock" style={{
+              left: `${evidence.bbox!.x * 100}%`, top: `${evidence.bbox!.y * 100}%`,
+              width: `${evidence.bbox!.width * 100}%`, height: `${evidence.bbox!.height * 100}%`,
+            }} />
+          ))}
+          {showPins && selectedEvidence.map((_, i) => (
+            <div key={i} className={`audit-pin pin-${i % 2 ? "two" : "one"}`}>{i + 1}</div>
+          ))}
+        </div>
       </div>
     );
   }
 
-  if (document.document_url) {
-    return (
-      <iframe
-        title="Financial document"
-        className="pdf-frame"
-        src={`${document.document_url}#page=${page}`}
-      />
-    );
+  if (renderError) {
+    return <div className="pdf-error">PDF preview unavailable: {renderError}</div>;
   }
 
   return (
-    <div className="paper">
-      <div className="paper-header">
-        <div>
-          <h1>ACME GLOBAL HOLDINGS PVT. LTD.</h1>
-          <h2>CONSOLIDATED BALANCE SHEET</h2>
-          <p>As at March 31, 2025 and 2024</p>
-          <p>(Amounts in ₹ lakhs)</p>
+    <div className="pdfjs-stage" ref={frameRef}>
+      <div className="pdfjs-page" style={{ width: viewportSize.width || "100%" }}>
+        <canvas ref={canvasRef} />
+        <div className="pdf-overlay" style={{ width: viewportSize.width, height: viewportSize.height }}>
+          {showPins && pageEvidence.map(({ finding, evidence }, index) => {
+            const box = evidence.bbox!;
+            return (
+              <button
+                key={`${finding.rule_id}-${index}`}
+                className={`real-audit-pin ${finding.status.toLowerCase()}`}
+                style={{
+                  left: `${(box.x + box.width) * 100}%`,
+                  top: `${Math.max(box.y, 0.015) * 100}%`,
+                }}
+                title={`${finding.title} — ${evidence.label || "Evidence"}`}
+                onClick={() => onPin(finding, evidence)}
+              >
+                {index + 1}
+              </button>
+            );
+          })}
+          {selectedEvidence.map((evidence, index) => {
+            const box = evidence.bbox!;
+            return (
+              <div
+                key={`highlight-${index}`}
+                className="evidence-highlight"
+                style={{
+                  left: `${box.x * 100}%`,
+                  top: `${box.y * 100}%`,
+                  width: `${Math.max(box.width, 0.005) * 100}%`,
+                  height: `${Math.max(box.height, 0.005) * 100}%`,
+                }}
+              />
+            );
+          })}
         </div>
-        <div className="exhibit">Page<br /><b>{page}</b><small>Document AI preview</small></div>
       </div>
-      <div className="paper-rule" />
-      <div className="paper-section">ASSETS</div>
-      <div className="paper-subsection">Current Assets</div>
-      <table className="statement-table">
-        <tbody>
-          {[
-            ["Cash and cash equivalents", "₹184.50"],
-            ["Trade receivables, net", "₹92.40"],
-            ["Inventories, net", "₹148.20"],
-            ["Prepaid expenses and other current assets", "₹21.90"],
-          ].map(([label, value]) => <tr key={label}><td>{label}</td><td>{value}</td><td>₹142.20</td></tr>)}
-        </tbody>
-      </table>
-      {highlights.map((evidence, i) => (
-        <div
-          key={i}
-          className="evidence-highlight mock"
-          style={{
-            left: `${evidence.bbox!.x * 100}%`,
-            top: `${evidence.bbox!.y * 100}%`,
-            width: `${evidence.bbox!.width * 100}%`,
-            height: `${evidence.bbox!.height * 100}%`,
-          }}
-        />
-      ))}
-      {showPins && page === 1 && (
-        <div className="audit-pin pin-one" title="Evidence pin">1</div>
-      )}
     </div>
   );
 }
@@ -394,7 +470,7 @@ export default function App() {
           </div>
 
           <div className="pdf-stage">
-            <PageViewer document={document} page={page} selectedFinding={selected} showPins={showPins} onPin={jumpToEvidence} />
+            <PdfJsViewer document={document} page={page} selectedFinding={selected} showPins={showPins} onPin={jumpToEvidence} />
           </div>
         </section>
 
