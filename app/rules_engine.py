@@ -193,7 +193,15 @@ class ComplianceRulesEngine:
         regulation_provider: Callable[[str, RuleContext], list[RegulationEvidence]] | None = None,
     ) -> list[ComplianceFinding]:
         findings = []
-        active_ids = active_rule_ids(\n            jurisdiction=context.jurisdiction, framework=context.framework,\n            entity_type=context.entity_type, listed=context.listed,\n            reporting_date=date.fromisoformat(context.reporting_date) if context.reporting_date else None,\n        )\n        for rule in self.rules:\n            if context.document_type not in rule.statement_types or rule.rule_id not in active_ids:\n                continue\n            regulations = (
+        active_ids = active_rule_ids(
+            jurisdiction=context.jurisdiction, framework=context.framework,
+            entity_type=context.entity_type, listed=context.listed,
+            reporting_date=date.fromisoformat(context.reporting_date) if context.reporting_date else None,
+        )
+        for rule in self.rules:
+            if context.document_type not in rule.statement_types or rule.rule_id not in active_ids:
+                continue
+            regulations = (
                 regulation_provider(rule.rule_id, context)
                 if regulation_provider
                 else []
