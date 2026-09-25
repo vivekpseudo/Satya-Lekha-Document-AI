@@ -229,3 +229,119 @@ The report includes:
 - methodology and limitations
 
 The PDF is generated with ReportLab and returned as `application/pdf`.
+
+
+## Web application
+
+The repository now includes a production-oriented frontend under `frontend/`:
+
+- Vite
+- React
+- TypeScript
+- Tailwind CSS
+- Ant Design
+- PDF.js document rendering
+- page navigation
+- Document AI evidence highlights
+- clickable audit pins
+- live compliance score
+- FastAPI integration
+- PDF compliance report export
+
+Run locally:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Set `VITE_API_BASE_URL` when the API is not available at the default local backend.
+
+## Docker Compose deployment
+
+The root `docker-compose.yml` runs the complete application:
+
+```
+Browser
+   ↓
+Frontend / Nginx
+   ↓ /api/*
+FastAPI
+   ↓
+PostgreSQL + pgvector
+   ↓
+Regulatory evidence
+```
+
+It provides:
+
+- PostgreSQL 16 + pgvector
+- FastAPI backend
+- React/Vite frontend served by Nginx
+- health checks
+- persistent PostgreSQL volume
+- automatic database initialization
+- Google Document AI credential mounting
+- API reverse proxy
+
+Configure:
+
+```bash
+cp .env.example .env
+mkdir -p secrets
+# place the Google service-account JSON at:
+# secrets/google-service-account.json
+
+docker compose up -d --build
+```
+
+The web application is available on `http://localhost:8080` by default.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for deployment and production-hardening guidance.
+
+### Environment
+
+Required Google settings:
+
+- `GOOGLE_CLOUD_PROJECT`
+- `DOCUMENT_AI_LOCATION`
+- `DOCUMENT_AI_PROCESSOR_ID`
+
+Deployment settings:
+
+- `POSTGRES_PASSWORD`
+- `WEB_PORT`
+
+Never commit `.env`, Google service-account credentials, database passwords, or other secrets.
+
+## End-to-end architecture
+
+```
+                    Satya-Lekha Web
+                         │
+             ┌───────────┴───────────┐
+             │                       │
+       Document Upload          Compliance UI
+             │                       │
+             ▼                       ▼
+       Google Document AI       Findings / Score
+             │                       │
+       OCR + Tables + Layout         │
+             │                       │
+             ▼                       │
+     Financial Normalization         │
+             │                       │
+             ▼                       │
+      PostgreSQL / pgvector          │
+             │                       │
+       ┌─────┴─────┐                 │
+       ▼           ▼                 │
+  Rules Engine   Regulatory RAG ─────┘
+       │
+       ▼
+ PASS / FAIL / REVIEW
+       │
+       ▼
+ PDF Compliance Report
+```
