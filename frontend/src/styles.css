@@ -220,3 +220,12 @@ button { font: inherit; }
   .classification-pill { display: block; margin: 5px 0 0; }
   .page-nav { padding-left: 10px; padding-right: 10px; }
 }
+
+.pdfjs-stage { display: flex; justify-content: center; align-items: flex-start; width: 100%; min-height: 700px; }
+.pdfjs-page { position: relative; margin: 0 auto; background: white; box-shadow: 0 10px 35px rgba(32,47,70,.13); }
+.pdfjs-page canvas { display: block; }
+.pdf-overlay { position: absolute; left: 0; top: 0; pointer-events: none; }
+.pdf-overlay .real-audit-pin { pointer-events: auto; }
+.pdf-overlay .evidence-highlight { pointer-events: none; }
+.pdf-error { width: min(820px, 100%); margin: 40px auto; padding: 24px; background: white; border-radius: 10px; color: #a33; border: 1px solid #efc8c5; }
+.paper-viewer { width: min(820px, 100%); margin: 0 auto; }
