@@ -1,71 +1,163 @@
 # Satya-Lekha deployment
 
-## Docker Compose
+Designed for a **Hostinger KVM VPS with Docker and Nginx Proxy Manager (NPM)**.
 
-The root docker-compose.yml deploys:
+## Architecture
 
-- PostgreSQL 16 with pgvector
-- FastAPI backend
-- Vite/React frontend served by Nginx
-- Nginx reverse proxy from the frontend to backend /api/* routes
+```
+Internet
+   |
+Nginx Proxy Manager
+   | HTTPS -> HTTP
+   v
+frontend:80
+   | /api/*
+   v
+backend:8000
+   |
+   +--> PostgreSQL + pgvector
+   +--> Google Document AI
+```
 
-### 1. Prepare Google credentials
+Only the frontend is attached to the NPM network. PostgreSQL and FastAPI stay on the private Docker network.
 
-Create a Google Cloud service account with access to Document AI and provide its JSON key at:
+## 1. Create the shared NPM network
 
+```bash
+docker network create proxy
+```
+
+If NPM is not attached to it, find its container:
+
+```bash
+docker ps --format '{{.Names}}'
+```
+
+Then:
+
+```bash
+docker network connect proxy <npm-container-name>
+```
+
+If your existing NPM network has another name, set `PROXY_NETWORK` in `.env`.
+
+## 2. Prepare the application
+
+```bash
+git clone https://github.com/vivekpseudo/Satya-Lekha-Document-AI.git
+cd Satya-Lekha-Document-AI
+mkdir -p secrets
+```
+
+Place the Google Cloud service-account key at:
+
+```
 secrets/google-service-account.json
+```
 
 Do not commit this file.
 
-For production, prefer a platform secret/identity mechanism instead of a long-lived service-account key.
+## 3. Configure environment
 
-### 2. Configure environment
+```bash
+cp .env.example .env
+nano .env
+```
 
-Copy .env.example to .env and set at minimum:
+Set:
 
-    GOOGLE_CLOUD_PROJECT=your-project-id
-    DOCUMENT_AI_LOCATION=us
-    DOCUMENT_AI_PROCESSOR_ID=your-processor-id
-    POSTGRES_PASSWORD=use-a-long-random-password
-    WEB_PORT=8080
+```env
+GOOGLE_CLOUD_PROJECT=your-project-id
+DOCUMENT_AI_LOCATION=us
+DOCUMENT_AI_PROCESSOR_ID=your-processor-id
+POSTGRES_PASSWORD=use-a-long-random-password
+PROXY_NETWORK=proxy
+```
 
-### 3. Start
+The frontend uses `VITE_API_BASE_URL=/api`, so the browser does not need a public FastAPI URL.
 
-    mkdir -p secrets
-    docker compose up -d --build
+## 4. Start
 
-Open http://localhost:8080
+```bash
+docker compose up -d --build
+docker compose ps
+docker compose logs -f backend
+```
 
-Direct backend Swagger, when exposed locally, is available at http://localhost:8000/docs.
+There is deliberately **no host port mapping** for frontend, backend, or PostgreSQL.
 
-### 4. Logs and status
+## 5. Configure Nginx Proxy Manager
 
-    docker compose ps
-    docker compose logs -f backend
-    docker compose logs -f frontend
+Create a Proxy Host:
 
-Stop:
+- Domain Names: your Satya-Lekha domain, e.g. `satyalekha.example.com`
+- Scheme: `http`
+- Forward Hostname / IP: `frontend`
+- Forward Port: `80`
+- Block Common Exploits: enabled
+- Websockets Support: enabled
 
-    docker compose down
+The NPM container must share the external `proxy` network so Docker DNS can resolve `frontend`.
 
-Data persists in the postgres_data volume.
+### SSL
 
-## Production notes
+In NPM:
 
-Put TLS in front of the frontend container using your existing Nginx/Caddy/load balancer. Do not expose PostgreSQL publicly.
+1. Request a Let's Encrypt certificate.
+2. Select the Satya-Lekha domain.
+3. Enable **Force SSL**.
+4. Enable HTTP/2 if desired.
 
-Before production use, add:
+TLS terminates at NPM.
 
-- authentication and authorization
-- tenant isolation
-- object storage for uploaded PDFs
-- asynchronous Document AI jobs
-- Alembic migrations
-- centralized secrets
-- structured audit logging
-- backup/restore
-- request tracing
-- rate limiting
-- malware/file scanning
-- retention/deletion controls
-- authoritative regulatory source ingestion
+## 6. Verify
+
+Backend:
+
+```bash
+docker compose exec backend python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health').read().decode())"
+```
+
+Frontend-to-backend routing:
+
+```bash
+docker compose exec frontend wget -qO- http://backend:8000/health
+```
+
+Expected response:
+
+```json
+{"status":"ok"}
+```
+
+Then open the HTTPS domain through NPM.
+
+## 7. Updates
+
+```bash
+git pull
+docker compose up -d --build
+docker compose ps
+```
+
+## 8. Database backup
+
+```bash
+docker compose exec -T postgres pg_dump -U satya -d satya_lekha > satya_lekha_backup.sql
+```
+
+Keep backups outside the VPS too.
+
+## 9. Security
+
+Do not publicly expose:
+
+- PostgreSQL `5432`
+- FastAPI `8000`
+- frontend `80`
+
+NPM should be the public web entry point.
+
+Before production use, add authentication/authorization, tenant isolation, object storage for uploaded PDFs, asynchronous Document AI jobs, Alembic migrations, centralized secrets, audit logging, backups, tracing, rate limiting, malware scanning, retention/deletion controls, and authoritative regulatory-source ingestion.
+
+Persistent document viewing will require object storage or an access-controlled document-serving endpoint; the current upload flow can render the selected PDF locally in the browser during the session.
