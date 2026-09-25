@@ -49,3 +49,8 @@ The UI now calls the FastAPI service for document processing, compliance evaluat
 Evidence returned with page numbers and normalized bounding boxes is rendered as highlights and clickable audit pins. Selecting an evidence item navigates to its source page.
 
 The control score is calculated from the current rule findings (PASS = 100% contribution, REVIEW = 50%, FAIL = 0%) and is therefore a UI summary metric, not a statutory audit opinion.
+
+
+## PDF evidence overlay
+
+PDF documents are rendered with PDF.js. Document AI normalized coordinates are overlaid on the rendered page so findings can display true source highlights and clickable audit pins. Evidence coordinates are expected as normalized `x/y/width/height` values in the 0–1 range.
