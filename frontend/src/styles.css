@@ -194,3 +194,29 @@ button { font: inherit; }
   .audit-footer { flex-wrap: wrap; }
   .ledger-state { flex-basis: 100%; }
 }
+
+.classification-pill { margin-left: 10px; padding: 4px 8px; border-radius: 999px; background: #edf4ff; color: #3564aa; font-size: 10px; }
+.page-nav { display: flex; gap: 5px; padding: 7px 18px; overflow-x: auto; background: #f5f7fa; border-bottom: 1px solid #d9e0ea; }
+.page-nav button { min-width: 29px; height: 27px; border: 1px solid #d9e0ea; border-radius: 6px; background: white; color: #6e798a; cursor: pointer; font-size: 11px; }
+.page-nav button.active { background: #2c67d5; border-color: #2c67d5; color: white; font-weight: 700; }
+.pdf-frame { width: 100%; height: 100%; min-height: 900px; border: 0; background: #dfe4eb; }
+.document-image-wrap { position: relative; width: min(820px, 100%); margin: 0 auto; background: white; box-shadow: 0 10px 35px rgba(32,47,70,.13); }
+.document-page-image { display: block; width: 100%; height: auto; }
+.real-audit-pin { position: absolute; transform: translate(-50%, -50%); width: 25px; height: 25px; border: 2px solid white; border-radius: 50%; color: white; font-size: 10px; font-weight: 800; cursor: pointer; box-shadow: 0 3px 9px rgba(20,30,45,.25); z-index: 5; }
+.real-audit-pin.fail { background: #d63f38; }
+.real-audit-pin.review { background: #e3a119; }
+.real-audit-pin.pass { background: #21a56f; }
+.evidence-highlight { position: absolute; border: 2px solid #e1a51d; background: rgba(245,184,45,.18); border-radius: 4px; pointer-events: none; z-index: 4; }
+.evidence-highlight.mock { pointer-events: none; }
+.confidence-line { margin-top: 8px; color: #8791a1; font-size: 10px; }
+.evidence-list { display: grid; gap: 6px; margin-top: 11px; }
+.evidence-list button { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; text-align: left; border: 1px solid #e2e7ee; background: #f8fafc; border-radius: 7px; padding: 8px 9px; cursor: pointer; color: #526073; }
+.evidence-list button:hover { border-color: #83a7df; background: #f0f5ff; }
+.evidence-list b { color: #27364d; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+.evidence-list small { color: #8b95a5; font-size: 9px; }
+.reg-source { margin-top: 8px; padding-top: 8px; border-top: 1px solid #e1e6ee; font-size: 10px; color: #536075; line-height: 1.45; }
+.reg-source small { display: block; color: #8490a1; margin-top: 3px; overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .classification-pill { display: block; margin: 5px 0 0; }
+  .page-nav { padding-left: 10px; padding-right: 10px; }
+}
