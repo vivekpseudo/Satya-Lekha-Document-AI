@@ -345,3 +345,353 @@ Never commit `.env`, Google service-account credentials, database passwords, or 
        ▼
  PDF Compliance Report
 ```
+
+
+## Production deployment
+
+The repository can be deployed on a Linux VPS with Docker. The recommended production topology is:
+
+```
+Internet
+   │
+   ▼
+Nginx Proxy Manager / Reverse Proxy
+   │
+   ├── https://satya-lekha.example.com
+   │       ▼
+   │   Frontend container (Nginx)
+   │
+   └── https://api.satya-lekha.example.com
+           ▼
+       FastAPI container
+           │
+           ├── PostgreSQL + pgvector
+           ├── Google Document AI
+           └── Regulatory/RAG data
+```
+
+### Prerequisites
+
+Install the following on the deployment host:
+
+- Ubuntu/Debian Linux
+- Docker Engine
+- Docker Compose v2
+- Git
+- Nginx Proxy Manager or another TLS reverse proxy
+- At least 4 CPU cores and 8 GB RAM for the document-processing MVP
+- Additional CPU/GPU resources are required when hosting local OCR/LLM models
+- A persistent disk for PostgreSQL, uploaded documents, logs, and model/data assets
+
+Verify:
+
+```bash
+docker --version
+docker compose version
+git --version
+```
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/vivekpseudo/Satya-Lekha-Document-AI.git
+cd Satya-Lekha-Document-AI
+```
+
+### 2. Configure production environment
+
+Create the environment file:
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+Set production values for at least:
+
+```env
+GOOGLE_CLOUD_PROJECT=<google-cloud-project-id>
+DOCUMENT_AI_LOCATION=<processor-location>
+DOCUMENT_AI_PROCESSOR_ID=<document-ai-processor-id>
+
+POSTGRES_DB=satya_lekha
+POSTGRES_USER=satya
+POSTGRES_PASSWORD=<strong-random-password>
+
+WEB_PORT=8080
+```
+
+Do not commit `.env`.
+
+Generate a strong database password, for example:
+
+```bash
+openssl rand -base64 32
+```
+
+### 3. Configure Google Document AI credentials
+
+Create a production `secrets` directory outside version control:
+
+```bash
+mkdir -p secrets
+chmod 700 secrets
+```
+
+Copy the Google service-account JSON into:
+
+```
+secrets/google-service-account.json
+```
+
+Set restrictive permissions:
+
+```chmod 600 secrets/google-service-account.json```
+
+The service account should have only the Google Cloud permissions required by Document AI. Never put the JSON credentials in GitHub, `.env`, Docker images, or public object storage.
+
+### 4. Configure the reverse proxy
+
+Create DNS records pointing your domain/subdomains to the VPS.
+
+Recommended:
+
+```
+satya-lekha.example.com      -> VPS_PUBLIC_IP
+api.satya-lekha.example.com  -> VPS_PUBLIC_IP
+```
+
+In Nginx Proxy Manager create:
+
+**Frontend proxy host**
+
+- Domain: `satya-lekha.example.com`
+- Forward host: the Docker host IP
+- Forward port: `8080`
+- Enable WebSocket Support if required by the frontend
+- Issue a Let's Encrypt certificate
+- Force SSL
+
+**API proxy host**
+
+- Domain: `api.satya-lekha.example.com`
+- Forward host: the Docker host IP
+- Forward port: the published FastAPI port configured by `docker-compose.yml`
+- Enable WebSocket Support if required
+- Issue a Let's Encrypt certificate
+- Force SSL
+
+For a single-domain deployment, the frontend can also proxy `/api` to FastAPI internally. Do not expose PostgreSQL directly to the Internet.
+
+### 5. Configure the frontend API URL
+
+Before building the frontend, set the production API URL in the environment used by the frontend build.
+
+Example:
+
+```env
+VITE_API_BASE_URL=https://api.satya-lekha.example.com
+```
+
+For a same-origin reverse-proxy setup, use:
+
+```env
+VITE_API_BASE_URL=/api
+```
+
+Rebuild the frontend after changing any `VITE_*` variable because Vite injects these values at build time.
+
+### 6. Build and start the stack
+
+```bash
+docker compose pull
+docker compose build --no-cache
+docker compose up -d
+```
+
+Check container state:
+
+```bash
+docker compose ps
+```
+
+Inspect logs:
+
+```bash
+docker compose logs -f
+```
+
+Backend only:
+
+```bash
+docker compose logs -f backend
+```
+
+Frontend only:
+
+```bash
+docker compose logs -f frontend
+```
+
+### 7. Verify health
+
+From the server:
+
+```bash
+curl -f http://localhost:<backend-port>/health
+```
+
+Verify the web application through the HTTPS domain:
+
+```
+https://satya-lekha.example.com
+```
+
+Verify the API:
+
+```
+https://api.satya-lekha.example.com/docs
+```
+
+The exact backend health endpoint/port should match the current FastAPI application and `docker-compose.yml`.
+
+### 8. Initialize and verify the database
+
+For a fresh environment:
+
+```bash
+docker compose exec backend python -m pytest -q
+```
+
+Verify PostgreSQL:
+
+```bash
+docker compose exec postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+```
+
+For production, prefer Alembic migrations over manually applying `app/schema.sql` once migrations are introduced.
+
+### 9. Production validation checklist
+
+Run an end-to-end test with:
+
+1. A native-text annual report PDF.
+2. A scanned PDF requiring OCR.
+3. A Balance Sheet.
+4. A Cash Flow Statement.
+5. A Director's Report.
+6. A document containing a financial table spanning multiple pages.
+7. A regulatory evidence search.
+8. A compliance evaluation.
+9. A generated PDF compliance report.
+
+Confirm that every finding contains:
+
+```
+finding
+  -> rule_id
+  -> source document
+  -> page/evidence reference
+  -> extracted value
+  -> regulatory evidence
+  -> source URI
+  -> effective date
+  -> model/version metadata
+```
+
+### 10. Backups
+
+At minimum, back up:
+
+- PostgreSQL data
+- uploaded/raw documents
+- normalized document JSON
+- regulatory corpus
+- model/version metadata
+- audit logs
+
+The PostgreSQL volume used by Docker is persistent, but persistence is **not** the same as backup. Configure scheduled off-host backups and test restoration regularly.
+
+Example database dump:
+
+```bash
+docker compose exec -T postgres pg_dump \
+  -U "$POSTGRES_USER" \
+  -d "$POSTGRES_DB" \
+  > backup-$(date +%F).sql
+```
+
+Do not store production backups in the public Git repository.
+
+### 11. Updating the deployment
+
+Pull the new version and recreate the affected containers:
+
+```bash
+git pull origin main
+docker compose build
+docker compose up -d
+docker image prune -f
+```
+
+For schema changes, run the project's migration command before serving traffic.
+
+### 12. Security requirements before production use
+
+Do not treat the default Docker Compose stack as regulator-grade production by itself. Before processing sensitive financial records, add:
+
+- Authentication and RBAC
+- HTTPS-only external access
+- API rate limiting
+- strict CORS configuration
+- request-size limits
+- malware/file validation
+- secret management
+- encrypted backups
+- network isolation for PostgreSQL and internal services
+- centralized structured logging
+- audit-log integrity protection
+- dependency and container vulnerability scanning
+- tenant/data isolation where multi-tenant access is introduced
+- retention and deletion controls
+- disaster recovery procedures
+- versioned regulatory data with effective dates
+- human review workflow for high-risk findings
+
+### 13. Important architecture note
+
+The current repository is the **Document AI / financial normalization foundation** of Satya-Lekha. The full production architecture described in the project design additionally requires separate services or modules for:
+
+- Arelle/XBRL ingestion
+- regulatory corpus ingestion and versioning
+- deterministic compliance rules
+- RAG retrieval
+- anomaly detection
+- immutable audit trails
+- analyst review workflow
+- OSINT monitoring
+- local/open-source LLM inference
+
+These components should be added incrementally rather than coupled into the document-ingestion container.
+
+For the initial MVP, prioritize:
+
+```
+PDF/XBRL ingestion
+   ↓
+Balance Sheet extraction
+   ↓
+Cash Flow extraction
+   ↓
+Director's Report extraction
+   ↓
+Normalization
+   ↓
+XBRL ↔ PDF reconciliation
+   ↓
+Deterministic compliance checks
+   ↓
+Evidence-linked findings
+```
+
+This keeps the first production milestone measurable and preserves the source-traced design described in the project documentation. 
