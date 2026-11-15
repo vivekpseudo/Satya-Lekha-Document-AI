@@ -238,7 +238,7 @@ function PdfJsViewer({
         canvas.style.height = `${viewport.height}px`;
         setViewportSize({ width: viewport.width, height: viewport.height });
 
-        await pdfPage.render({ canvasContext: context, viewport }).promise;
+        await pdfPage.render({ canvas, canvasContext: context, viewport }).promise;
         if (cancelled) context.clearRect(0, 0, canvas.width, canvas.height);
       } catch (error) {
         if (!cancelled) setRenderError(error instanceof Error ? error.message : "Unable to render PDF page");
