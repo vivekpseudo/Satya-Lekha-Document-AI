@@ -10,3 +10,5 @@ service-account*.json
 secrets/
 frontend/node_modules/
 frontend/dist/
+
+documentaidetails.md

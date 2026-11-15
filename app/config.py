@@ -4,13 +4,18 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    google_cloud_project: str
+    # "local" (PyMuPDF / sentence-transformers) or "google" (Document AI / Vertex AI)
+    extractor: str = "local"
+    embedder: str = "local"
+    google_cloud_project: str = ""
     document_ai_location: str = "us"
-    document_ai_processor_id: str
+    document_ai_processor_id: str = ""
     max_upload_mb: int = 20
     database_url: str = "postgresql+psycopg://satya:satya@localhost:5432/satya_lekha"
-    embedding_model: str = "gemini-embedding-001"
-    embedding_dimensions: int = 768
+    # local default: BAAI/bge-small-en-v1.5 (384 dims). For google use
+    # gemini-embedding-001 with EMBEDDING_DIMENSIONS=768.
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_dimensions: int = 384
     google_cloud_location: str = "global"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

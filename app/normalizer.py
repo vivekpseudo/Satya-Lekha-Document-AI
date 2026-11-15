@@ -45,7 +45,91 @@ def _layout_item(document: Any, layout: Any) -> dict:
     }
 
 
+def _block_text(block: Any) -> str:
+    """Flatten the text of a Layout Parser block (text, list or nested blocks)."""
+    parts: list[str] = []
+    text_block = getattr(block, "text_block", None)
+    if text_block is not None:
+        if getattr(text_block, "text", ""):
+            parts.append(text_block.text)
+        for child in getattr(text_block, "blocks", None) or []:
+            parts.append(_block_text(child))
+    list_block = getattr(block, "list_block", None)
+    if list_block is not None:
+        for entry in getattr(list_block, "list_entries", None) or []:
+            for child in getattr(entry, "blocks", None) or []:
+                parts.append(_block_text(child))
+    return " ".join(part for part in parts if part)
+
+
+def _cell_text(cell: Any) -> str:
+    return " ".join(
+        part for part in (_block_text(b) for b in (getattr(cell, "blocks", None) or [])) if part
+    )
+
+
+def _block_page(block: Any) -> int:
+    span = getattr(block, "page_span", None)
+    start = int(getattr(span, "page_start", 0) or 0)
+    return start or 1
+
+
+def _layout_rows(rows: Any) -> list[list[dict]]:
+    return [
+        [{"text": _cell_text(cell), "bbox": None} for cell in row.cells]
+        for row in rows
+    ]
+
+
+def _walk_layout_blocks(blocks: Any, pages: dict[int, dict], texts: list[str]) -> None:
+    for block in blocks or []:
+        page = pages.setdefault(
+            _block_page(block), {"page_number": _block_page(block), "paragraphs": [], "tables": []}
+        )
+        table_block = getattr(block, "table_block", None)
+        if table_block is not None and (
+            getattr(table_block, "body_rows", None) or getattr(table_block, "header_rows", None)
+        ):
+            page["tables"].append({
+                "header_rows": _layout_rows(table_block.header_rows),
+                "body_rows": _layout_rows(table_block.body_rows),
+            })
+            for row in list(table_block.header_rows) + list(table_block.body_rows):
+                texts.append(" ".join(t for t in (_cell_text(c) for c in row.cells) if t))
+            continue
+        text = _block_text(block)
+        if text:
+            page["paragraphs"].append({"text": text, "bbox": None})
+            texts.append(text)
+        # Nested blocks are already flattened by _block_text; only recurse for
+        # containers that _block_text does not cover.
+
+
+def _normalize_layout_document(document: Any) -> dict:
+    pages: dict[int, dict] = {}
+    texts: list[str] = []
+    _walk_layout_blocks(document.document_layout.blocks, pages, texts)
+    ordered = [pages[number] for number in sorted(pages)]
+    return {
+        "text": document.text or "\n".join(texts),
+        "page_count": len(ordered),
+        "pages": ordered,
+        "entities": [],
+        "metadata": {"mime_type": document.mime_type, "processor_output": "layout"},
+    }
+
+
+def _has_layout_blocks(document: Any) -> bool:
+    layout = getattr(document, "document_layout", None)
+    return bool(layout and getattr(layout, "blocks", None))
+
+
 def normalize_document(document: Any) -> dict:
+    # Layout Parser processors populate document_layout instead of pages[].tables
+    # and leave document.text empty.
+    if _has_layout_blocks(document):
+        return _normalize_layout_document(document)
+
     pages = []
 
     for page_number, page in enumerate(document.pages, start=1):

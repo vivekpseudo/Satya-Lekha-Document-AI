@@ -3,9 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.classifier import classify_document
 from app.config import get_settings
-from app.document_ai import DocumentAIService
+from app.extraction import UnsupportedDocumentError, allowed_mime_types, extract_document
 from app.financial_normalizer import classify_statement_rows, normalize_table_rows
-from app.normalizer import normalize_document
 from app.db import get_db
 from app.storage import save_processed_document
 from app.api_models import RegulationIn, RegulationSearchIn
@@ -22,14 +21,6 @@ app = FastAPI(
     description="Google Document AI ingestion, financial classification and normalization service.",
 )
 
-ALLOWED_MIME_TYPES = {
-    "application/pdf",
-    "image/png",
-    "image/jpeg",
-    "image/tiff",
-}
-
-
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
@@ -39,7 +30,7 @@ def health() -> dict:
 async def process_document(file: UploadFile = File(...)) -> dict:
     settings = get_settings()
 
-    if file.content_type not in ALLOWED_MIME_TYPES:
+    if file.content_type not in allowed_mime_types(settings):
         raise HTTPException(status_code=415, detail=f"Unsupported MIME type: {file.content_type}")
 
     content = await file.read()
@@ -47,18 +38,13 @@ async def process_document(file: UploadFile = File(...)) -> dict:
     if len(content) > max_bytes:
         raise HTTPException(status_code=413, detail=f"File exceeds {settings.max_upload_mb} MB limit.")
 
-    service = DocumentAIService(
-        project_id=settings.google_cloud_project,
-        location=settings.document_ai_location,
-        processor_id=settings.document_ai_processor_id,
-    )
-
     try:
-        document = service.process(content, file.content_type)
+        result = extract_document(content, file.content_type, settings)
+    except UnsupportedDocumentError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Document AI processing failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"Document extraction failed: {exc}") from exc
 
-    result = normalize_document(document)
     classification = classify_document(result["text"])
 
     normalized_tables = []

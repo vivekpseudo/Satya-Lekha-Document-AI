@@ -22,17 +22,16 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
+      EXTRACTOR: ${EXTRACTOR:-local}
+      EMBEDDER: ${EMBEDDER:-local}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       DOCUMENT_AI_LOCATION: ${DOCUMENT_AI_LOCATION:-us}
-      DOCUMENT_AI_PROCESSOR_ID: ${DOCUMENT_AI_PROCESSOR_ID}
+      DOCUMENT_AI_PROCESSOR_ID: ${DOCUMENT_AI_PROCESSOR_ID:-}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20}
       DATABASE_URL: postgresql+psycopg://satya:${POSTGRES_PASSWORD:-change-me}@postgres:5432/satya_lekha
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-gemini-embedding-001}
-      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-768}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-384}
       GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
-      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google_credentials
-    volumes:
-      - ./secrets/google-service-account.json:/run/secrets/google_credentials:ro
     depends_on:
       postgres:
         condition: service_healthy
