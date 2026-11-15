@@ -84,6 +84,17 @@ def regulation_provider(
             f"for {context.document_type}"
         )
         rows = retrieve_regulations(session, query=query, top_k=top_k, as_of=as_of)
-        return [RegulationEvidence(**row) for row in rows]
+        return [
+            RegulationEvidence(
+                regulation_id=row["regulation_id"],
+                title=row["title"],
+                text=row["text"],
+                source_uri=row["source_uri"],
+                effective_from=str(row["effective_from"]) if row["effective_from"] else None,
+                effective_to=str(row["effective_to"]) if row["effective_to"] else None,
+                similarity=float(row["similarity"]) if row["similarity"] is not None else None,
+            )
+            for row in rows
+        ]
 
     return provider
