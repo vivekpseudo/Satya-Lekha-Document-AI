@@ -1,4 +1,6 @@
+import os
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from app.classifier import classify_document
@@ -236,3 +238,18 @@ def generate_compliance_report(payload: ComplianceReportRequest):
         media_type="application/pdf",
         filename="satya_lekha_compliance_report.pdf",
     )
+
+# Serve static frontend files and handle SPA fallback
+static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
+
+if os.path.isdir(static_dir):
+    assets_dir = os.path.join(static_dir, "assets")
+    if os.path.isdir(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_static(full_path: str):
+        file_path = os.path.join(static_dir, full_path)
+        if os.path.isfile(file_path) and not os.path.isdir(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(static_dir, "index.html"))
