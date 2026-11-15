@@ -1,22 +1,5 @@
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: satya_lekha
-      POSTGRES_USER: satya
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./app/schema.sql:/docker-entrypoint-initdb.d/01-regulatory-schema.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U satya -d satya_lekha"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    networks: [internal]
-
-  backend:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -28,13 +11,12 @@ services:
       DOCUMENT_AI_LOCATION: ${DOCUMENT_AI_LOCATION:-us}
       DOCUMENT_AI_PROCESSOR_ID: ${DOCUMENT_AI_PROCESSOR_ID:-}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20}
-      DATABASE_URL: postgresql+psycopg://satya:${POSTGRES_PASSWORD:-change-me}@postgres:5432/satya_lekha
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://user:password@external_postgres:5432/db_name}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
       EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-384}
       GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
-    depends_on:
-      postgres:
-        condition: service_healthy
+    ports:
+      - "8000:8000"
     command: >
       sh -c "python -m app.init_db &&
       uvicorn app.main:app --host 0.0.0.0 --port 8000"
@@ -43,29 +25,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-    networks: [internal]
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: /api
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
-    expose: ["80"]
     networks:
-      - internal
+      - existing_postgres_network
       - proxy
 
-volumes:
-  postgres_data:
-
 networks:
-  internal:
-    driver: bridge
+  existing_postgres_network:
+    external: true
+    name: ${POSTGRES_NETWORK:-postgres_default}
   proxy:
     external: true
     name: ${PROXY_NETWORK:-proxy}
