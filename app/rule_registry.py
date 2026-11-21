@@ -28,6 +28,18 @@ for _rule_id in (
     )
 
 
+# AGM notice (Companies Act, 2013 / SS-2) and invoice (CGST Rule 46) rules.
+for _rule_id in (
+    *(f"NOTICE-{n:03d}" for n in range(1, 11)),
+    *(f"INV-{n:03d}" for n in range(1, 9)),
+):
+    RULE_REGISTRY[_rule_id] = RuleMetadata(
+        rule_id=_rule_id,
+        regulators=("MCA",) if _rule_id.startswith("NOTICE") else ("CBIC",),
+        frameworks=("Ind AS", "Other"),
+    )
+
+
 def get_rule_metadata(rule_id: str) -> RuleMetadata | None:
     return RULE_REGISTRY.get(rule_id)
 

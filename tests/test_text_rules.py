@@ -118,5 +118,6 @@ def test_no_text_gives_review_not_a_crash():
     assert len(result) == 9 and {f.status for f in result.values()} == {"REVIEW"}
 
 
-def test_rules_do_not_run_for_other_document_types():
-    assert run("invoice", DIRECTORS) == {}
+def test_report_rules_do_not_run_for_other_document_types():
+    for doc_type in ("invoice", "agm_notice", "balance_sheet"):
+        assert not any(k.startswith(("DIRREP", "AUDREP")) for k in run(doc_type, DIRECTORS))

@@ -133,7 +133,7 @@ def _long_dates(index: TextIndex) -> list[date]:
 
 def _signature_date(index: TextIndex) -> date | None:
     """The last 'Date: dd/mm/yyyy' in the document (signature block)."""
-    matches = re.findall(r"date(\d{2})(\d{2})(\d{4})", index.squashed)
+    matches = re.findall(r"dated?(\d{2})(\d{2})(\d{4})", index.squashed)
     for d, m, y in reversed(matches):
         try:
             return date(int(y), int(m), int(d))

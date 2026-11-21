@@ -233,9 +233,11 @@ DEFAULT_RULES = [
 class ComplianceRulesEngine:
     def __init__(self, rules: list[ComplianceRule] | None = None):
         if rules is None:
-            from app.text_rules import TEXT_RULES  # lazy: text_rules imports this module
+            # lazy: these modules import this one
+            from app.notice_invoice_rules import NOTICE_INVOICE_RULES
+            from app.text_rules import TEXT_RULES
 
-            rules = DEFAULT_RULES + TEXT_RULES
+            rules = DEFAULT_RULES + TEXT_RULES + NOTICE_INVOICE_RULES
         self.rules = rules
 
     def evaluate(
