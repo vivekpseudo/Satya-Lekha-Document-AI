@@ -123,6 +123,7 @@ async def process_and_store(
             facts.append({
                 "label": row.get("label", ""),
                 "value": value,
+                "values": values,  # every column (current year first, then prior), None for nil
                 "source_page": row.get("source_page"),
                 "source_text": row.get("label", ""),
                 "bbox": row.get("bbox"),

@@ -282,7 +282,7 @@ def rule_directors_signature(ctx: RuleContext, regs: list[RegulationEvidence]) -
     if not ctx.text.strip():
         return _no_text(rid, title, regs)
     index = TextIndex(ctx.text)
-    dins = set(re.findall(r"din(?:no)?(\d{8})", index.squashed))
+    dins = set(re.findall(r"(?<!u)din(?:no)?(\d{8})", index.squashed))
     evidence = [e for e in (index.evidence(r"forbehalfofboard|foronbehalfofboard", "Signature block"),
                             index.evidence(r"date\d{8}", "Date")) if e]
     has_place = index.has(r"place[a-z]{3,}")

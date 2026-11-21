@@ -40,6 +40,17 @@ for _rule_id in (
     )
 
 
+# Financial-statement rules (Schedule III to the Companies Act, 2013).
+for _rule_id in (
+    *(f"FSBS-{n:03d}" for n in range(1, 8)),
+    *(f"FSPL-{n:03d}" for n in range(1, 6)),
+    "FSX-001",
+):
+    RULE_REGISTRY[_rule_id] = RuleMetadata(
+        rule_id=_rule_id, regulators=("MCA",), frameworks=("Ind AS", "Other"),
+    )
+
+
 def get_rule_metadata(rule_id: str) -> RuleMetadata | None:
     return RULE_REGISTRY.get(rule_id)
 

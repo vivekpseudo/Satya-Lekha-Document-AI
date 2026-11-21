@@ -224,7 +224,7 @@ DEFAULT_RULES = [
     ComplianceRule(
         rule_id="DATA-QUALITY-001",
         title="Revenue sign check",
-        statement_types={"profit_and_loss", "other"},
+        statement_types={"profit_and_loss", "balance_sheet", "other"},
         evaluator=rule_negative_revenue,
     ),
 ]
@@ -235,9 +235,10 @@ class ComplianceRulesEngine:
         if rules is None:
             # lazy: these modules import this one
             from app.notice_invoice_rules import NOTICE_INVOICE_RULES
+            from app.statement_rules import STATEMENT_RULES
             from app.text_rules import TEXT_RULES
 
-            rules = DEFAULT_RULES + TEXT_RULES + NOTICE_INVOICE_RULES
+            rules = DEFAULT_RULES + STATEMENT_RULES + TEXT_RULES + NOTICE_INVOICE_RULES
         self.rules = rules
 
     def evaluate(
