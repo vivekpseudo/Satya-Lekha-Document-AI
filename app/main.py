@@ -1,4 +1,5 @@
 import os
+import tempfile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
@@ -18,6 +19,7 @@ from app.finding_models import ComplianceEvaluateRequest, ComplianceFindingRespo
 from app.report_models import ComplianceReportRequest
 from app.report import build_compliance_report
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 
 app = FastAPI(
     title="Satya-Lekha Document AI",
@@ -233,7 +235,10 @@ from pathlib import Path
 
 @app.post("/api/v1/compliance/report")
 def generate_compliance_report(payload: ComplianceReportRequest):
-    output = Path("/tmp") / "satya_lekha_compliance_report.pdf"
+    # One file per request: concurrent exports and prints must not overwrite each other.
+    handle, name = tempfile.mkstemp(prefix="satya_lekha_report_", suffix=".pdf")
+    os.close(handle)
+    output = Path(name)
     build_compliance_report(
         str(output),
         company_name=payload.company_name,
@@ -246,6 +251,7 @@ def generate_compliance_report(payload: ComplianceReportRequest):
         path=output,
         media_type="application/pdf",
         filename="satya_lekha_compliance_report.pdf",
+        background=BackgroundTask(output.unlink, missing_ok=True),
     )
 
 # Serve static frontend files and handle SPA fallback

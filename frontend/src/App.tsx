@@ -441,6 +441,35 @@ export default function App() {
     }
   };
 
+  // Prints the same PDF that "Export PDF report" downloads, not the web page.
+  const printReport = async () => {
+    try {
+      const blob = await downloadComplianceReport(document);
+      const url = URL.createObjectURL(blob);
+      const frame = window.document.createElement("iframe");
+      frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+      frame.src = url;
+      const cleanup = () => {
+        frame.remove();
+        URL.revokeObjectURL(url);
+      };
+      frame.onload = () => {
+        try {
+          frame.contentWindow?.focus();
+          frame.contentWindow?.print();
+          setTimeout(cleanup, 60000);
+        } catch {
+          // Some browsers will not print an embedded PDF: open it so it can be printed from there.
+          window.open(url, "_blank");
+          setTimeout(cleanup, 60000);
+        }
+      };
+      window.document.body.appendChild(frame);
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : "Unable to print the report");
+    }
+  };
+
   const jumpToEvidence = (finding: Finding, evidence: EvidenceBox) => {
     setSelectedId(finding.rule_id);
     // Cross-document evidence can come from another file; only jump within this one.
@@ -463,7 +492,7 @@ export default function App() {
             <Button loading={loading} icon={<CloudUploadOutlined />}>Upload Document</Button>
           </Upload>
           <Button type="primary" loading={loading} icon={<PlayCircleFilled />}>Run Compliance</Button>
-          <Dropdown menu={{ items: [{ key: "pdf", icon: <FilePdfOutlined />, label: "Export PDF report", onClick: exportPdf }, { key: "print", icon: <PrinterOutlined />, label: "Print report", onClick: () => window.print() }] }}>
+          <Dropdown menu={{ items: [{ key: "pdf", icon: <FilePdfOutlined />, label: "Export PDF report", onClick: exportPdf }, { key: "print", icon: <PrinterOutlined />, label: "Print report", onClick: printReport }] }}>
             <Button icon={<DownloadOutlined />} />
           </Dropdown>
           <Button className="mobile-menu" icon={<MenuOutlined />} />
@@ -492,7 +521,7 @@ export default function App() {
               <span>{page} / {totalPages}</span>
               <Button size="small" disabled={page >= totalPages} icon={<RightOutlined />} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} />
               <Button size="small" type={showPins ? "primary" : "default"} icon={<CheckOutlined />} onClick={() => setShowPins((v) => !v)}>Audit Pins</Button>
-              <Button size="small" icon={<PrinterOutlined />} onClick={() => window.print()} />
+              <Button size="small" icon={<PrinterOutlined />} title="Print report" onClick={printReport} />
             </div>
           </div>
 
