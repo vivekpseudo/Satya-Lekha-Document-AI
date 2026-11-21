@@ -149,7 +149,7 @@ function FindingCard({
                 <button key={`${finding.rule_id}-${index}`} onClick={() => onEvidence(evidence)}>
                   <span>{evidence.label || "Evidence"}</span>
                   <b>{String(evidence.value ?? "")}</b>
-                  <small>Page {evidence.page || evidence.source_page}</small>
+                  {(evidence.page || evidence.source_page) && <small>Page {evidence.page || evidence.source_page}</small>}
                 </button>
               ))}
             </div>

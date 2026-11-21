@@ -395,30 +395,32 @@ def _has_hsn_code(text: str) -> bool:
     return re.search(r"(?<![\d,.\-])\d{4,8}(?![\d,.])", text[header.end():]) is not None
 
 
+def invoice_date(text: str) -> date | None:
+    """The invoice date: '3-Apr-24', '03/04/2024', ... read from the top of the invoice."""
+    head = text[:800]
+    for match in re.finditer(r"\b(\d{1,2})[-/. ]([A-Za-z]{3,9})[-/. ,]+(\d{2,4})\b", head):
+        month = _MONTHS.get(next((m for m in _MONTHS if m.startswith(match.group(2).lower()[:3])), ""), None)
+        if month:
+            year = int(match.group(3)) + (2000 if len(match.group(3)) == 2 else 0)
+            try:
+                return date(year, month, int(match.group(1)))
+            except ValueError:
+                continue
+    for match in re.finditer(r"\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\b", head):
+        try:
+            return date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+        except ValueError:
+            continue
+    return None
+
+
 def rule_invoice_identity(ctx: RuleContext, regs: list[RegulationEvidence]) -> ComplianceFinding | None:
     rid, title = "INV-001", "Invoice number and date (CGST Rule 46(b), (c))"
     if not ctx.text.strip():
         return _no_text(rid, title, regs)
     index = TextIndex(ctx.text)
     number = re.search(r"invoice\s*(?:no|number|#)\.?\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9/\-]*)", ctx.text, re.I)
-    head = ctx.text[:800]
-    parsed = None
-    for match in re.finditer(r"\b(\d{1,2})[-/. ]([A-Za-z]{3,9})[-/. ,]+(\d{2,4})\b", head):
-        month = _MONTHS.get(next((m for m in _MONTHS if m.startswith(match.group(2).lower()[:3])), ""), None)
-        if month:
-            year = int(match.group(3)) + (2000 if len(match.group(3)) == 2 else 0)
-            try:
-                parsed = date(year, month, int(match.group(1)))
-                break
-            except ValueError:
-                continue
-    if parsed is None:
-        for match in re.finditer(r"\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\b", head):
-            try:
-                parsed = date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
-                break
-            except ValueError:
-                continue
+    parsed = invoice_date(ctx.text)
     evidence = [e for e in (index.evidence(r"invoice(no|number)", "Invoice number and date", 120),) if e]
     problems = []
     if not number:

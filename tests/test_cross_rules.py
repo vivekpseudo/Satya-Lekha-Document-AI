@@ -27,9 +27,11 @@ FS_FACTS = [
     fact("viii. Profit before tax", "-36004.00", "-53274.00", 2),
     fact("x. Profit(Loss) for the year", "-36004.00", "-53274.00", 2),
     fact("- Basic & Diluted", "-1.80", "-2.66", 2),
+    fact("2 LEGAL AND PROFESSIONAL FEES", "8500.00", "8500.00", 3),
 ]
 FS_TEXT = (
-    "ABC PRIVATE LIMITED Registered Office: Lucknow CIN:- U72501HR2022PTC102347 BALANCE SHEET AS AT 31ST MARCH, 2024 "
+    "ABC PRIVATE LIMITED Registered Office: 5434/35, Flat No-106 Pragati Vihar DLF Phase- 4 Gurugram Gurgaon HR 122009 IN "
+    "CIN:- U72501HR2022PTC102347 BALANCE SHEET AS AT 31ST MARCH, 2024 "
     "STATEMENT OF CASH FLOWS FOR THE YEAR ENDED 31ST MARCH, 2024 "
     "FOR : MISHRA N & CO. CHARTERED ACCOUNTANT FRN.: 031764C CA NITESH MISHRA "
     "VIVEK KUSHWAHA AWANTEKAA SINGH DIN: 09551132 DIN: 09551131 M.No- 423745 UDIN: Place: LUCKNOW Date: 05-09-2024"
@@ -41,10 +43,12 @@ DR_FACTS = [
     fact("7 EPS", "-1.80", "-2.66"),
 ]
 DR_TEXT = (
-    "ABC Private Limited 5434/35 Gurugram CIN No : U72501HR2022PTC102347 DIRECTORS' REPORT "
+    "ABC Private Limited 5434/35, Flat No-106 Pragati Vihar DLF Phase- 4 Gurugram-122009 "
+    "CIN No : U72501HR2022PTC102347 DIRECTORS' REPORT "
     "Annual Report for the Financial Year ended on 31st March, 2024. "
     "Your Company has incurred Net loss of Rs. 36004 as against Net loss of Rs. 53274 in the previous year. "
     "COMMENTS BY BOARD OF DIRECTORS ON AUDITORS REPORT: The observations of the Statutory Auditors are self explanatory. "
+    "DIVIDEND: Considering the current year loss, your Board of Directors do not recommend payment of dividend. "
     "CHANGE IN SHARE CAPITAL: There has been no change in Share capital of the company. "
     "STATUTORY AUDITORS M/s. Mishra N & Co., Chartered Accountants, be and hereby appointed as Statutory Auditors "
     "of the Company for a term of five consecutive years. "
@@ -61,9 +65,10 @@ AR_TEXT = (
     "Place: Lucknow Date: 06/09/2024"
 )
 NT_TEXT = (
-    "NOTICE CIN:- U72501HR2022PTC102347 Notice is hereby given that the Annual General Meeting of ABC Private Limited "
-    "will be held at the Registered Office on 30.09.2024 at 4.30 p.m. 1. To adopt the audited Balance Sheet as at "
-    "31st March, 2024. 2. To appoint M/s Mishra N & Co. Chartered Accountants as Company Auditors to hold office "
+    "5434/ 35, Fla t No-106 Pragati Vihar DLF P hase- 4 G urugram-1220 09 CIN:- U72501HR2022PTC102347 NOTICE "
+    "Notice is hereby given that the Annual General Meeting of ABC Private Limited "
+    "will be held at the Registered Office on 30.09.2024 at 4.30 p.m. 1. To consider and adopt the audited Balance Sheet as at "
+    "31st March, 2024 along with the report of Auditors and Directors thereon. 2. To appoint M/s Mishra N & Co. Chartered Accountants as Company Auditors to hold office "
     "till the conclusion of the Annual General Meeting to be held in 2029. Place: Lucknow Dated: 06/09/2024"
 )
 
@@ -95,7 +100,7 @@ def text_swap(key, old, new):
 
 def test_a_consistent_package_passes_every_cross_check():
     result = run()
-    assert len(result) == 11
+    assert len(result) == 14
     assert {f.status for f in result.values()} == {"PASS"}, {k: f.message for k, f in result.items() if f.status != "PASS"}
 
 
@@ -212,5 +217,131 @@ def test_cross_check_endpoint():
     response = client.post("/api/v1/compliance/cross-check", json={"documents": package()})
     assert response.status_code == 200
     body = response.json()
-    assert len(body) == 11 and {f["status"] for f in body} == {"PASS"}
+    assert len(body) == 14 and {f["status"] for f in body} == {"PASS"}
     assert client.post("/api/v1/compliance/cross-check", json={"documents": package()[:1]}).status_code == 422
+
+
+# ------------------------------------------------------------------ notice and invoice
+
+INVOICE_TEXT = (
+    "SUBJECT TO LUCKNOW JURISDICTION Invoice No. BILL/133 3-Apr-24 Dated Mishra N & Co. UGF-004, Church Road, Aliganj "
+    "Lucknow INVOICE Party : ABC Private Limited 5434/35, Flat No-106, Pragati Vihar, DLF Phase-4 Gurugram, "
+    "Haryana-122009 PAN/IT No :AAMCP7676G Sl Particulars Amount No. "
+    "1 Balance Sheet & Projections 3,500.00 ITR and Financials FY 23-24 2 ROC Filing Fees 3,500.00 Form AOC-4, MGT-7 "
+    "Total 7,000.00 Amount Chargeable (in words) INR Seven Thousand Only Company's Bank Details "
+    "A/c Holder's Name : Mishra N & Co. Bank Name : UCO Bank for Mishra N & Co. Authorised Signatory"
+)
+INVOICE_FACTS = [
+    {"label": "1 Balance Sheet & Projections", "value": "3500.00", "values": ["3500.00"], "source_page": 1},
+    {"label": "2 ROC Filing Fees", "value": "3500.00", "values": ["3500.00"], "source_page": 1},
+    {"label": "Total", "value": "7000.00", "values": ["7000.00"], "source_page": 1},
+]
+
+
+def with_invoice(**overrides):
+    docs = package(**overrides)
+    docs.append({"document_type": "invoice", "document_name": "bill.pdf", "text": INVOICE_TEXT,
+                 "facts": INVOICE_FACTS})
+    return docs
+
+
+def run_invoice(text_change=None, **overrides):
+    docs = with_invoice(**overrides)
+    if text_change:
+        docs[-1] = {**docs[-1], **text_change}
+    return {f.rule_id: f for f in CrossDocumentEngine().evaluate(docs)}
+
+
+def test_a_package_with_an_invoice_passes_except_the_auditor_services_review():
+    result = run_invoice()
+    assert len(result) == 17
+    not_passing = {k: f.status for k, f in result.items() if f.status != "PASS"}
+    assert not_passing == {"XDOC-016": "REVIEW"}, not_passing
+
+
+def test_a_different_pin_code_or_flat_in_any_document_is_reviewed():
+    pin = run(**text_swap("nt", "G urugram-1220 09", "G urugram-1220 01"))
+    assert pin["XDOC-012"].status == "REVIEW" and "PIN code differs" in pin["XDOC-012"].message
+    flat = run(**text_swap("dr", "Flat No-106", "Flat No-206"))
+    assert flat["XDOC-012"].status == "REVIEW" and "building and flat" in flat["XDOC-012"].message
+    invoice = run_invoice({"text": INVOICE_TEXT.replace("Haryana-122009", "Haryana-122001")})
+    assert invoice["XDOC-012"].status == "REVIEW"
+
+
+def test_the_building_number_is_not_mistaken_for_a_pin_code():
+    # "5434/35" squashes to a six digit number; it must not be read as a PIN.
+    assert run()["XDOC-012"].status == "PASS"
+
+
+def test_the_notice_needs_every_paper_it_asks_members_to_adopt():
+    result = run(ar=None)
+    assert result["XDOC-013"].status == "REVIEW" and "Auditor's Report" in result["XDOC-013"].message
+    assert run(dr=None)["XDOC-013"].status == "REVIEW"
+    assert run(fs=None)["XDOC-013"].status == "REVIEW"
+    assert run()["XDOC-013"].status == "PASS"
+
+
+def test_dividend_must_agree_between_the_directors_report_and_the_notice():
+    declared = run(**text_swap("nt", "1. To consider", "0. To declare a final dividend. 1. To consider"))
+    assert declared["XDOC-014"].status == "REVIEW" and declared["XDOC-014"].severity == "HIGH"
+    recommended = run(**text_swap("dr", "do not recommend payment of dividend",
+                                  "recommend a dividend of Rs. 5 per share"))
+    assert recommended["XDOC-014"].status == "REVIEW" and "no item to declare" in recommended["XDOC-014"].message
+    both = text_swap("dr", "do not recommend payment of dividend", "recommend a dividend of Rs. 5 per share")
+    both["nt"] = {"text": NT_TEXT.replace("1. To consider", "0. To declare a final dividend. 1. To consider")}
+    assert run(**both)["XDOC-014"].status == "PASS"
+
+
+def test_the_invoice_must_be_addressed_to_the_company():
+    result = run_invoice({"text": INVOICE_TEXT.replace("Party : ABC Private Limited", "Party : Other Traders Pvt Ltd")})
+    assert result["XDOC-015"].status == "REVIEW" and "abc" in result["XDOC-015"].message
+
+
+def test_an_invoice_from_the_statutory_auditor_for_accounting_work_is_flagged():
+    result = run_invoice()["XDOC-016"]
+    assert result.status == "REVIEW" and "Balance Sheet" in result.message
+
+
+def test_an_audit_fee_invoice_from_the_auditor_is_not_flagged():
+    audit_only = INVOICE_TEXT.replace("Balance Sheet & Projections", "Statutory audit fee").replace(
+        "ITR and Financials FY 23-24", "for the year").replace("ROC Filing Fees", "Out of pocket expenses").replace(
+        "Form AOC-4, MGT-7", "")
+    assert run_invoice({"text": audit_only})["XDOC-016"].status == "PASS"
+
+
+def test_an_invoice_from_someone_who_is_not_the_auditor_is_not_checked_for_independence():
+    other = INVOICE_TEXT.replace("Mishra N & Co.", "Sharma & Associates")
+    assert "XDOC-016" not in run_invoice({"text": other})
+
+
+def test_the_auditor_is_recognised_from_the_audit_report_signature_even_without_the_other_reports():
+    result = run_invoice(dr=None, nt=None)
+    assert result["XDOC-016"].status == "REVIEW"
+
+
+def test_a_year_end_invoice_for_the_year_must_be_accrued_in_the_statements():
+    base = run_invoice()["XDOC-017"]
+    assert base.status == "PASS" and "8,500.00" in base.message
+    facts = copy.deepcopy(FS_FACTS)
+    facts[-1]["values"][0] = "5000.00"
+    facts[-1]["value"] = "5000.00"
+    assert run_invoice(fs={"facts": facts})["XDOC-017"].status == "REVIEW"
+    no_fees = [f for f in FS_FACTS if "PROFESSIONAL" not in f["label"]]
+    result = run_invoice(fs={"facts": no_fees})["XDOC-017"]
+    assert result.status == "REVIEW" and result.severity == "LOW"
+
+
+def test_an_invoice_dated_within_the_year_has_no_cutoff_question():
+    inside = INVOICE_TEXT.replace("3-Apr-24", "3-Mar-24")
+    assert "XDOC-017" not in run_invoice({"text": inside})
+    unspecific = INVOICE_TEXT.replace("FY 23-24", "")
+    assert "XDOC-017" not in run_invoice({"text": unspecific})
+
+
+def test_invoice_rules_stay_silent_without_an_invoice():
+    assert not any(k in run() for k in ("XDOC-015", "XDOC-016", "XDOC-017"))
+
+
+def test_invoice_labels_use_the_file_name_in_evidence():
+    result = run_invoice()
+    assert "bill.pdf" in {e.get("document") for e in result["XDOC-016"].evidence}

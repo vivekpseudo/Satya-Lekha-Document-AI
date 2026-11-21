@@ -19,7 +19,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any, Callable
 
-from app.notice_invoice_rules import _meeting_datetime
+from app.notice_invoice_rules import _invoice_total, _meeting_datetime, invoice_date
 from app.rules_engine import ComplianceFinding, RuleContext
 from app.statement_rules import (
     TOLERANCE,
@@ -35,7 +35,7 @@ from app.text_rules import _MODIFIED_OPINION, TextIndex, _finding, _period_end, 
 
 FS_TYPES = {"balance_sheet", "profit_and_loss", "cash_flow"}
 LABELS = {"directors_report": "Directors' Report", "auditors_report": "Auditor's Report",
-          "agm_notice": "AGM notice", "balance_sheet": "Financial statements",
+          "agm_notice": "AGM notice", "invoice": "Invoice", "balance_sheet": "Financial statements",
           "profit_and_loss": "Financial statements", "cash_flow": "Financial statements"}
 
 
@@ -513,6 +513,237 @@ def xdoc_statements_covered(pkg: Package) -> ComplianceFinding | None:
                    evidence, 0.75)
 
 
+# ------------------------------------------------------------- notice and invoice
+
+def _spaced(text: str) -> str:
+    """Join digits a PDF font has split apart ('1220 09' -> '122009')."""
+    return re.sub(r"(?<=\d)\s+(?=\d)", "", text)
+
+
+def _office_fingerprint(doc: Doc) -> tuple[str | None, str | None]:
+    """(PIN code, building/flat token) of the company's address as this document gives it."""
+    if doc.type == "invoice":
+        match = re.search(r"party", doc.text, re.I)
+        region = doc.text[match.start():match.start() + 320] if match else ""
+    else:
+        region = doc.text[:700]
+    pin = re.search(r"(?<![\d/])([1-8]\d{5})(?![\d/])", _spaced(region))
+    flat = re.search(r"(\d{3,6})flatno(\d{1,4})", TextIndex(region).squashed)
+    return (pin.group(1) if pin else None), (flat.group(0) if flat else None)
+
+
+def xdoc_address(pkg: Package) -> ComplianceFinding | None:
+    rid, title = "XDOC-012", "Registered office address agrees across documents"
+    docs = pkg.of("directors_report", "agm_notice", "invoice", *FS_TYPES)
+    prints = {d.kind: _office_fingerprint(d) for d in docs}
+    prints = {k: v for k, v in prints.items() if v[0] or v[1]}
+    if len(prints) < 2:
+        return None
+    problems = []
+    for position, name in ((0, "PIN code"), (1, "building and flat")):
+        values = {k: v[position] for k, v in prints.items() if v[position]}
+        if len(set(values.values())) > 1:
+            problems.append(f"the {name} differs: " + "; ".join(f"{k}: {v.upper()}" for k, v in values.items()))
+    evidence = [d.evidence(r"\d{3,6}flatno\d{1,4}", "Address", 160) or
+                d.evidence(r"[a-z]\d{6}", "Address", 120) for d in docs if d.kind in prints]
+    if problems:
+        return _result(rid, title, "REVIEW", "MEDIUM",
+                       _upper_first("; ".join(problems)) + ". A change of registered office must be filed with "
+                       "the Registrar; otherwise the documents should give one address.", evidence, 0.75)
+    pin = next((v[0] for v in prints.values() if v[0]), None)
+    return _result(rid, title, "PASS", "LOW",
+                   f"{len(prints)} documents give the same address" + (f" (PIN {pin})." if pin else "."),
+                   evidence, 0.8)
+
+
+def xdoc_papers_for_adoption(pkg: Package) -> ComplianceFinding | None:
+    rid, title = "XDOC-013", "Papers the notice asks members to adopt are in the package"
+    notice = pkg.one("agm_notice")
+    if not notice or len(pkg.docs) < 2:
+        return None
+    adopt = notice.evidence(r"(adopt|consider).{0,100}(financialstatements|balancesheet).{0,160}", "Adoption item", 260)
+    if not adopt:
+        return None
+    needs = [("the financial statements", True,
+              bool(pkg.statements()))]
+    needs.append(("the Directors' Report", notice.index.has(r"report(s)?of.{0,20}(thedirectors|directors|board)|"
+                                                       r"(directors|boards)report"), bool(pkg.one("directors_report"))))
+    needs.append(("the Auditor's Report", notice.index.has(r"report(s)?of.{0,20}auditors?|auditors?report"),
+                  bool(pkg.one("auditors_report"))))
+    missing = [name for name, wanted, present in needs if wanted and not present]
+    present = [name for name, wanted, present in needs if wanted and present]
+    evidence = [adopt]
+    if missing:
+        return _result(rid, title, "REVIEW", "LOW",
+                       "The notice asks members to adopt " + ", ".join(n for n, w, _ in needs if w)
+                       + ", but these were not among the documents provided: " + ", ".join(missing)
+                       + ". They must accompany the notice (s.101(1), s.136).", evidence, 0.75)
+    return _result(rid, title, "PASS", "LOW",
+                   "Everything the notice asks members to adopt is present: " + ", ".join(present) + ".",
+                   evidence, 0.8)
+
+
+_NO_DIVIDEND = r"(donot|doesnot|didnot|notto|norecommend|notrecommend)(?:recommend)?.{0,40}dividend|nodividend"
+_RECOMMENDS = r"(recommend|recommends|recommended|propose|proposes)(a|the|ofa)?(final)?dividendof(rs)?\d"
+
+
+def xdoc_dividend(pkg: Package) -> ComplianceFinding | None:
+    rid, title = "XDOC-014", "Dividend agrees between the Directors' Report and the notice"
+    dr, notice = pkg.one("directors_report"), pkg.one("agm_notice")
+    if not dr or not notice:
+        return None
+    dr_none, dr_yes = dr.index.has(_NO_DIVIDEND), dr.index.has(_RECOMMENDS)
+    if dr_none == dr_yes:
+        return None  # silent or ambiguous
+    declares = notice.index.has(r"declare(a|the)?(final)?dividend|declarationofdividend")
+    evidence = [dr.evidence(r"dividend", "Dividend", 220),
+                notice.evidence(r"declare(a|the)?(final)?dividend|declarationofdividend", "Notice item", 160)]
+    if dr_none and declares:
+        return _result(rid, title, "REVIEW", "HIGH",
+                       "The Directors' Report says no dividend is recommended, but the notice asks members to "
+                       "declare one.", evidence, 0.8)
+    if dr_yes and not declares:
+        return _result(rid, title, "REVIEW", "MEDIUM",
+                       "The Directors' Report recommends a dividend, but the notice has no item to declare it.",
+                       evidence, 0.8)
+    return _result(rid, title, "PASS", "LOW",
+                   "The Directors' Report and the notice agree on the dividend"
+                   + (" (none recommended or declared)." if dr_none else " (recommended and put to members)."),
+                   evidence, 0.8)
+
+
+def _party_line(invoice: Doc) -> str | None:
+    match = re.search(r"party\s*[:\-]\s*([^\n]{3,90})", invoice.text, re.I)
+    return TextIndex(match.group(1)).squashed if match else None
+
+
+def xdoc_invoice_recipient(pkg: Package) -> ComplianceFinding | None:
+    rid, title = "XDOC-015", "Invoice is addressed to the company"
+    invoice = pkg.one("invoice")
+    others = pkg.of(*_ENTITY_DOCS)
+    if not invoice or not others:
+        return None
+    core = _company_core(sorted(others, key=lambda d: d.type not in ("directors_report", *FS_TYPES)))
+    party = _party_line(invoice)
+    if not core or not party:
+        return None
+    evidence = [invoice.evidence(r"party.{0,100}", "Recipient", 140)]
+    if core in party:
+        return _result(rid, title, "PASS", "LOW", f"The invoice is addressed to '{core}', the company in the other "
+                       "documents.", evidence, 0.85)
+    return _result(rid, title, "REVIEW", "MEDIUM",
+                   "The invoice is not addressed to the company named in the other documents "
+                   f"('{core}'). An invoice for another party should not be recorded in this company's accounts.",
+                   evidence, 0.8)
+
+
+_SUPPLIER = (r"for(.{3,40}?)authori[sz]edsignatory", r"accountholdersname(.{3,40}?)bankname")
+_RESTRICTED = (r"(balancesheet|financials|financialstatements|bookkeeping|accounting|projections|"
+               r"preparationofaccounts|compilation)")
+
+
+_RESTRICTED_NAMES = {
+    "balancesheet": "Balance Sheet", "financials": "Financials", "financialstatements": "financial statements",
+    "bookkeeping": "book keeping", "accounting": "accounting", "projections": "Projections",
+    "preparationofaccounts": "preparation of accounts", "compilation": "compilation",
+}
+
+
+def _supplier_core(invoice: Doc) -> str | None:
+    for pattern in _SUPPLIER:
+        match = re.search(pattern, invoice.index.squashed)
+        if match:
+            return match.group(1)
+    return None
+
+
+def _is_the_auditor(core: str, pkg: Package) -> Doc | None:
+    """The document that shows this supplier is the company's statutory auditor."""
+    for doc in pkg.of("directors_report", "agm_notice"):
+        named = _auditor_core(doc)
+        if named and (named == core or named in core or core in named):
+            return doc
+    report = pkg.one("auditors_report")
+    if report:
+        frn = re.search(r"frn\d{5,6}", report.index.squashed)
+        if frn and core in report.index.squashed[max(0, frn.start() - 140):frn.start()]:
+            return report
+    return None
+
+
+def xdoc_auditor_services(pkg: Package) -> ComplianceFinding | None:
+    rid, title = "XDOC-016", "Services billed by the statutory auditor (s.144)"
+    invoice = pkg.one("invoice")
+    if not invoice or not (pkg.one("auditors_report") or pkg.one("directors_report") or pkg.one("agm_notice")):
+        return None
+    core = _supplier_core(invoice)
+    if not core:
+        return None
+    link = _is_the_auditor(core, pkg)
+    if not link:
+        return None
+    restricted = invoice.index.search(_RESTRICTED)
+    evidence = [invoice.evidence(r"sl.{0,10}particulars.{0,200}|invoice.{0,60}particulars.{0,200}",
+                                 "Invoice particulars", 240) or invoice.evidence(_RESTRICTED, "Particulars", 200),
+                link.evidence(_AUDITOR_NAME, "Auditor named", 160) if link.type != "auditors_report"
+                else link.evidence(r"frn\d{5,6}", "Auditor FRN", 160)]
+    if restricted:
+        return _result(rid, title, "REVIEW", "MEDIUM",
+                       "The invoice is from the company's statutory auditor and its particulars include "
+                       f"'{_RESTRICTED_NAMES[restricted.group(1)]}'. Section 144 bars a statutory auditor from providing accounting "
+                       "and book-keeping services (among others) to the company it audits. If these services "
+                       "involve preparing the financial statements, the auditor's independence is in question; "
+                       "confirm what was billed.", evidence, 0.75)
+    return _result(rid, title, "PASS", "LOW",
+                   "The invoice is from the company's statutory auditor, and nothing in its particulars suggests a "
+                   "service restricted by s.144. The auditor remains responsible for assessing independence.",
+                   evidence, 0.7)
+
+
+def _norm_label(row: Row) -> str:
+    return re.sub(r"^\d{1,2}", "", row.key)
+
+
+def xdoc_invoice_cutoff(pkg: Package) -> ComplianceFinding | None:
+    rid, title = "XDOC-017", "Year-end invoice for the year's services is reflected in the statements"
+    invoice = pkg.one("invoice")
+    if not invoice:
+        return None
+    issued = invoice_date(invoice.text)
+    ends = [e for e in (_period_end(d.index) for d in pkg.of(*_ENTITY_DOCS)) if e]
+    if not issued or not ends:
+        return None
+    period_end = max(set(ends), key=ends.count)
+    fy = re.search(r"fy(20)?(\d{2})(\d{2})", invoice.index.squashed)
+    if issued <= period_end or not fy or int(fy.group(3)) != period_end.year % 100:
+        return None  # dated within the year, or not clearly about the year just ended
+    total = _invoice_total(RuleContext(document_type="invoice", facts=invoice.facts, text=invoice.text))
+    evidence = [invoice.evidence(r"fy\d{4}", "Period billed", 120)]
+    candidates = []
+    for doc in pkg.statements():
+        for row in _rows(doc.context):
+            if any(word in _norm_label(row) for word in ("legalandprofessional", "professionalfees", "auditfee",
+                                                          "auditorsremuneration", "professionalcharges")):
+                candidates.append((doc, row))
+    amount = total[1] if total else None
+    note = f"The invoice is dated {issued:%d %b %Y}, after the year-end ({period_end:%d %b %Y}), but bills for " \
+           f"the year ended {period_end:%d %b %Y}"
+    if amount is None or not candidates:
+        return _result(rid, title, "REVIEW", "LOW",
+                       note + ". The expense belongs in that year; check that it was accrued in the statements"
+                       + (" (no professional-fee line was found to compare with)." if not candidates else "."),
+                       evidence, 0.65)
+    doc, best = max(candidates, key=lambda c: c[1].cur0)
+    evidence.append(_row_evidence(doc, best, "Professional fees"))
+    if best.cur0 + TOLERANCE >= amount:
+        return _result(rid, title, "PASS", "LOW",
+                       note + f". The statements carry '{best.label}' of {_fmt(best.cur0)}, which can include "
+                       f"this invoice ({_fmt(amount)}).", evidence, 0.7)
+    return _result(rid, title, "REVIEW", "MEDIUM",
+                   note + f", but the largest professional-fee line in the statements ({_fmt(best.cur0)}) is less "
+                   f"than the invoice ({_fmt(amount)}), so it may not have been accrued.", evidence, 0.75)
+
+
 CROSS_RULES: list[tuple[str, str, Rule]] = [
     ("XDOC-001", "Company name and CIN agree across documents", xdoc_identity),
     ("XDOC-002", "Financial year-end agrees across documents", xdoc_period),
@@ -525,6 +756,12 @@ CROSS_RULES: list[tuple[str, str, Rule]] = [
     ("XDOC-009", "Same directors sign the Directors' Report and the statements", xdoc_directors),
     ("XDOC-010", "Auditor's term agrees between the Directors' Report and the notice", xdoc_auditor_term),
     ("XDOC-011", "Statements named in the audit opinion are in the package", xdoc_statements_covered),
+    ("XDOC-012", "Registered office address agrees across documents", xdoc_address),
+    ("XDOC-013", "Papers the notice asks members to adopt are in the package", xdoc_papers_for_adoption),
+    ("XDOC-014", "Dividend agrees between the Directors' Report and the notice", xdoc_dividend),
+    ("XDOC-015", "Invoice is addressed to the company", xdoc_invoice_recipient),
+    ("XDOC-016", "Services billed by the statutory auditor (s.144)", xdoc_auditor_services),
+    ("XDOC-017", "Year-end invoice for the year's services is reflected in the statements", xdoc_invoice_cutoff),
 ]
 
 
