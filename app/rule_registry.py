@@ -51,6 +51,13 @@ for _rule_id in (
     )
 
 
+# Cash flow statement rules (AS 3 / Ind AS 7).
+for _rule_id in (f"CFS-{n:03d}" for n in range(1, 10)):
+    RULE_REGISTRY[_rule_id] = RuleMetadata(
+        rule_id=_rule_id, regulators=("MCA",), frameworks=("Ind AS", "Other"),
+    )
+
+
 def get_rule_metadata(rule_id: str) -> RuleMetadata | None:
     return RULE_REGISTRY.get(rule_id)
 

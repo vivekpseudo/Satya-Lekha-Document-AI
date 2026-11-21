@@ -234,11 +234,13 @@ class ComplianceRulesEngine:
     def __init__(self, rules: list[ComplianceRule] | None = None):
         if rules is None:
             # lazy: these modules import this one
+            from app.cash_flow_rules import CASH_FLOW_STATEMENT_RULES
             from app.notice_invoice_rules import NOTICE_INVOICE_RULES
             from app.statement_rules import STATEMENT_RULES
             from app.text_rules import TEXT_RULES
 
-            rules = DEFAULT_RULES + STATEMENT_RULES + TEXT_RULES + NOTICE_INVOICE_RULES
+            rules = (DEFAULT_RULES + STATEMENT_RULES + CASH_FLOW_STATEMENT_RULES
+                     + TEXT_RULES + NOTICE_INVOICE_RULES)
         self.rules = rules
 
     def evaluate(
