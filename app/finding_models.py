@@ -9,6 +9,7 @@ class ComplianceEvaluateRequest(BaseModel):
     reporting_date: str | None = None
     entity_type: str | None = None
     listed: bool | None = None
+    text: str = ""
     retrieve_regulations: bool = True
     regulation_top_k: int = Field(default=3, ge=1, le=10)
 

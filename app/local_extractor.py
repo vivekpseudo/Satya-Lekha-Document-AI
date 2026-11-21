@@ -172,9 +172,10 @@ def extract_pdf(content: bytes) -> dict:
     except Exception as exc:  # corrupt / not a PDF
         raise UnsupportedDocumentError(f"Could not open PDF: {exc}") from exc
 
-    pages, texts = [], []
+    pages, texts, page_texts = [], [], []
     with doc:
         for number, page in enumerate(doc, start=1):
+            page_start = len(texts)
             width, height = page.rect.width, page.rect.height
             statement = _statement_rows(page)
             # Prefer line reconstruction; fall back to PyMuPDF's table finder.
@@ -199,13 +200,15 @@ def extract_pdf(content: bytes) -> dict:
                 texts.extend(" ".join(c["text"] for c in r if c["text"]) for r in rows)
 
             pages.append({"page_number": number, "paragraphs": paragraphs, "tables": table_out})
+            page_texts.append("\n".join(texts[page_start:]))
 
     if not "".join(texts).strip():
         raise UnsupportedDocumentError(
             "No extractable text found. This looks like a scanned PDF; local extraction needs OCR."
         )
     return {
-        "text": "\n".join(texts),
+        # "\f" separates pages so rules can cite the page a phrase appears on.
+        "text": "\f".join(page_texts),
         "page_count": len(pages),
         "pages": pages,
         "entities": [],

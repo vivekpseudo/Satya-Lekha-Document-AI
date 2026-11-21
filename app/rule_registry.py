@@ -17,6 +17,17 @@ RULE_REGISTRY = {
 }
 
 
+# Narrative-document rules (Companies Act, 2013): Board's Report and Auditor's Report.
+# They apply whatever the accounting framework, so "Other" is included.
+for _rule_id in (
+    *(f"DIRREP-{n:03d}" for n in range(1, 12)),
+    *(f"AUDREP-{n:03d}" for n in range(1, 10)),
+):
+    RULE_REGISTRY[_rule_id] = RuleMetadata(
+        rule_id=_rule_id, regulators=("MCA",), frameworks=("Ind AS", "Other"),
+    )
+
+
 def get_rule_metadata(rule_id: str) -> RuleMetadata | None:
     return RULE_REGISTRY.get(rule_id)
 

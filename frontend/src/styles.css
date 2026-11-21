@@ -134,9 +134,10 @@ button { font: inherit; }
 .finding-filters button.active { color: #2d62c3; border-bottom: 2px solid #2d62c3; }
 .finding-filters b { display: inline-grid; place-items: center; min-width: 18px; height: 18px; border-radius: 10px; background: #eef3fb; margin-left: 4px; font-size: 10px; }
 
-.finding-list { padding: 8px 14px; border-bottom: 1px solid #eef1f5; display: flex; gap: 6px; }
-.finding-select { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: #f7f9fc; padding: 8px; border-radius: 7px; cursor: pointer; }
+.finding-list { padding: 8px 14px; border-bottom: 1px solid #eef1f5; display: flex; gap: 6px; overflow-x: auto; }
+.finding-select { flex: 1 0 150px; max-width: 240px; min-width: 0; display: flex; align-items: center; gap: 8px; border: 0; background: #f7f9fc; padding: 8px; border-radius: 7px; cursor: pointer; }
 .finding-select.selected { background: #edf4ff; }
+.finding-select .text-left { min-width: 0; overflow: hidden; }
 .finding-select strong, .finding-select small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .finding-select strong { font-size: 10px; color: #364154; }
 .finding-select small { color: #8d97a6; font-size: 9px; margin-top: 2px; }

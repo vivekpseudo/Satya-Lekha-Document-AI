@@ -15,6 +15,7 @@ class RuleContext:
     reporting_date: str | None = None
     entity_type: str | None = None
     listed: bool | None = None
+    text: str = ""  # full document text, pages separated by \f
 
 
 @dataclass(frozen=True)
@@ -231,7 +232,11 @@ DEFAULT_RULES = [
 
 class ComplianceRulesEngine:
     def __init__(self, rules: list[ComplianceRule] | None = None):
-        self.rules = rules or DEFAULT_RULES
+        if rules is None:
+            from app.text_rules import TEXT_RULES  # lazy: text_rules imports this module
+
+            rules = DEFAULT_RULES + TEXT_RULES
+        self.rules = rules
 
     def evaluate(
         self,

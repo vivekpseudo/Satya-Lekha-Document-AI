@@ -40,6 +40,7 @@ export type ProcessedDocument = {
   document_name: string;
   document_url?: string;
   document_mime?: string;
+  text?: string;
   classification: {
     document_type: string;
     confidence: number;

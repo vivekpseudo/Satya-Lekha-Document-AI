@@ -22,7 +22,7 @@ export async function processDocument(file: File): Promise<ProcessedDocument> {
 }
 
 export async function evaluateCompliance(
-  input: Pick<ProcessedDocument, "classification" | "facts" | "reporting_date"> & {
+  input: Pick<ProcessedDocument, "classification" | "facts" | "reporting_date" | "text"> & {
     framework?: string;
     entity_type?: string;
     listed?: boolean;
@@ -34,6 +34,7 @@ export async function evaluateCompliance(
     body: JSON.stringify({
       document_type: input.classification.document_type,
       facts: input.facts,
+      text: input.text ?? "",
       reporting_date: input.reporting_date,
       framework: input.framework || "Ind AS",
       entity_type: input.entity_type,

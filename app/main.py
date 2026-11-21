@@ -134,6 +134,7 @@ async def process_and_store(
         jurisdiction="IN",
         framework="Ind AS",
         reporting_date=result.get("reporting_date"),
+        text=result.get("text", ""),
     )
     provider = regulation_provider(
         session,
@@ -206,6 +207,7 @@ def evaluate_compliance(
         reporting_date=payload.reporting_date,
         entity_type=payload.entity_type,
         listed=payload.listed,
+        text=payload.text,
     )
     provider = (
         regulation_provider(
