@@ -52,3 +52,30 @@ def test_local_embedder_dimensions():
     service = EmbeddingService()
     assert len(service.embed_query("balance sheet")) == service.dimensions
     assert len(service.embed_document("Ind AS 1 presentation")) == service.dimensions
+
+
+def test_statement_without_rulings_handles_note_column_and_negatives():
+    from reportlab.pdfgen import canvas
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    c.drawString(50, 780, "BALANCE SHEET AS AT 31ST MARCH, 2024")
+    c.drawString(50, 760, "Particulars"); c.drawString(300, 760, "Note No.")
+    lines = [
+        ("(a) Share Capital", "1", ["200,000", "200,000"]),
+        ("(b) Reserves and Surplus", "2", ["- 89,278", "- 53,274"]),
+        ("Total equity", "", ["110,722", "146,726"]),
+    ]
+    y = 740
+    for label, note, vals in lines:
+        c.drawString(50, y, label)
+        c.drawString(300, y, note)
+        c.drawString(400, y, vals[0]); c.drawString(500, y, vals[1])
+        y -= 18
+    c.save()
+
+    out = extract_pdf(buf.getvalue())
+    rows = {r[0]["text"]: [x["text"] for x in r[1:]] for r in out["pages"][0]["tables"][0]["body_rows"]}
+    assert rows["(a) Share Capital"] == ["200,000", "200,000"]  # note column dropped
+    assert rows["(b) Reserves and Surplus"] == ["-89,278", "-53,274"]  # minus merged
+    assert "Particulars" not in rows

@@ -1,4 +1,5 @@
 import os
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -22,6 +23,18 @@ app = FastAPI(
     version="0.2.0",
     description="Google Document AI ingestion, financial classification and normalization service.",
 )
+
+# Dev-server access (Vite on :5173). In production the frontend is served from
+# the same origin, so no extra origins are needed. Override with CORS_ORIGINS.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in os.getenv(
+        "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",") if o.strip()],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/health")
 def health() -> dict:

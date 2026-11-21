@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any, Callable
@@ -54,6 +55,24 @@ def _find_facts(ctx: RuleContext, *keywords: str) -> list[dict[str, Any]]:
     ]
 
 
+def _positional_totals(ctx: RuleContext) -> tuple[dict | None, dict | None]:
+    """Fallback for statements that label both sides just "TOTAL".
+
+    Indian Schedule III balance sheets list "Equity and Liabilities" first and
+    "Assets" second, each closed by a bare TOTAL row. Use the first page that
+    carries exactly two bare TOTAL rows and read them in order:
+    (equity and liabilities, assets).
+    """
+    by_page: dict[Any, list[dict[str, Any]]] = {}
+    for fact in ctx.facts:
+        if re.sub(r"[^a-z]", "", str(fact.get("label", "")).lower()) == "total":
+            by_page.setdefault(fact.get("source_page"), []).append(fact)
+    for page in sorted(by_page, key=lambda p: (p is None, p)):
+        if len(by_page[page]) == 2:
+            return by_page[page][0], by_page[page][1]
+    return None, None
+
+
 def _money(value: Any) -> Decimal | None:
     try:
         return Decimal(str(value))
@@ -87,6 +106,33 @@ def rule_balance_sheet_basic(
     equity = _find_facts(ctx, "total equity")
 
     if not (asset and liabilities and equity):
+        le_fact, asset_fact = _positional_totals(ctx)
+        explicit_le = _find_facts(ctx, "total equity and liabilities", "total liabilities and equity")
+        if asset:
+            asset_fact = asset[0]
+        if explicit_le:
+            le_fact = explicit_le[0]
+        a, le = (_money(asset_fact.get("value")) if asset_fact else None,
+                 _money(le_fact.get("value")) if le_fact else None)
+        if asset_fact and le_fact and asset_fact is not le_fact and None not in (a, le):
+            difference = a - le
+            ok = abs(difference) <= Decimal("0.01")
+            return ComplianceFinding(
+                rule_id="INDAS-FS-001",
+                status="PASS" if ok else "FAIL",
+                severity="LOW" if ok else "HIGH",
+                title="Balance-sheet equation check",
+                message=(
+                    "Total assets equal total equity and liabilities "
+                    "(totals identified by their position on the balance sheet)."
+                    if ok
+                    else f"Total assets differ from total equity and liabilities by {difference} "
+                         "(totals identified by their position on the balance sheet)."
+                ),
+                evidence=[le_fact, asset_fact],
+                regulatory_evidence=_reg_evidence(regulations),
+                confidence=0.85,
+            )
         return ComplianceFinding(
             rule_id="INDAS-FS-001",
             status="REVIEW",

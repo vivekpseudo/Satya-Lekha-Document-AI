@@ -196,7 +196,7 @@ function PdfJsViewer({
     setRenderError(null);
 
     const source = document.document_url;
-    if (!source || !/\.pdf($|#)/i.test(source)) {
+    if (!source || !isPdfDocument(document)) {
       setPdf(null);
       return;
     }
@@ -215,7 +215,7 @@ function PdfJsViewer({
       cancelled = true;
       void loadingTask.destroy();
     };
-  }, [document.document_url]);
+  }, [document.document_url, document.document_mime]);
 
   useEffect(() => {
     let cancelled = false;
@@ -257,7 +257,7 @@ function PdfJsViewer({
     .map(normalizeEvidence)
     .filter((evidence) => evidence.page === page && evidence.bbox);
 
-  if (!document.document_url || !/\.pdf($|#)/i.test(document.document_url)) {
+  if (!isPdfDocument(document)) {
     return (
       <div className="paper-viewer">
         <div className="paper">
@@ -346,6 +346,12 @@ function PdfJsViewer({
   );
 }
 
+// Uploaded files get a blob: URL with no ".pdf" suffix, so detect PDFs by MIME type too.
+function isPdfDocument(doc: { document_url?: string; document_mime?: string }): boolean {
+  if (!doc.document_url) return false;
+  return doc.document_mime === "application/pdf" || /\.pdf($|#)/i.test(doc.document_url);
+}
+
 export default function App() {
   const [document, setDocument] = useState<ProcessedDocument>(demo);
   const [page, setPage] = useState(1);
@@ -373,6 +379,7 @@ export default function App() {
       setDocument({
         ...processed,
         document_url: processed.document_url || localUrl,
+        document_mime: file.type,
         findings,
         pages: processed.pages.length ? processed.pages : [{ pageNumber: 1 }],
       });

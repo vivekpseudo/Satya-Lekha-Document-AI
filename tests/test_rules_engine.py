@@ -33,3 +33,29 @@ def test_balance_sheet_review_when_totals_missing():
         )
     )
     assert findings[0].status == "REVIEW"
+
+
+def _fact(label, value, page=1):
+    return {"label": label, "value": value, "source_page": page}
+
+
+def test_balance_sheet_with_plain_total_rows_passes():
+    ctx = RuleContext(
+        document_type="balance_sheet",
+        facts=[_fact("TOTAL", "192268"), _fact("TOTAL", "192268"), _fact("Total", "999", page=3)],
+    )
+    finding = ComplianceRulesEngine().evaluate(ctx)[0]
+    assert finding.status == "PASS" and len(finding.evidence) == 2
+
+
+def test_balance_sheet_with_plain_total_rows_fails_when_unbalanced():
+    ctx = RuleContext(
+        document_type="balance_sheet",
+        facts=[_fact("TOTAL", "192268"), _fact("TOTAL", "200000")],
+    )
+    assert ComplianceRulesEngine().evaluate(ctx)[0].status == "FAIL"
+
+
+def test_single_total_row_is_still_review():
+    ctx = RuleContext(document_type="balance_sheet", facts=[_fact("TOTAL", "100")])
+    assert ComplianceRulesEngine().evaluate(ctx)[0].status == "REVIEW"
