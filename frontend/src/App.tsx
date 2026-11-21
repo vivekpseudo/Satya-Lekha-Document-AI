@@ -20,7 +20,7 @@ import { Button, Dropdown, Progress, Tag, Upload, message } from "antd";
 import type { UploadProps } from "antd";
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from "pdfjs-dist";
 import { downloadComplianceReport, evaluateCompliance, processDocument } from "./api";
-import type { EvidenceBox, Finding, ProcessedDocument, Status } from "./types";
+import type { DocumentPage, EvidenceBox, Finding, ProcessedDocument, Status } from "./types";
 
 GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -90,7 +90,9 @@ const statusMeta: Record<Status, { label: string; className: string }> = {
   REVIEW: { label: "Review", className: "status-review" },
 };
 
-function normalizeEvidence(evidence: EvidenceBox): EvidenceBox {
+function normalizeEvidence(raw: EvidenceBox): EvidenceBox {
+  // The API reports the page as source_page; the viewer filters on page.
+  const evidence = { ...raw, page: raw.page ?? raw.source_page ?? 1 };
   if (evidence.bbox) return evidence;
   const vertices = evidence.boundingPoly?.normalizedVertices || [];
   if (!vertices.length) return evidence;
@@ -346,6 +348,15 @@ function PdfJsViewer({
   );
 }
 
+// The API returns pages as { page_number, ... }; the viewer works with { pageNumber }.
+function normalizePages(raw: unknown): DocumentPage[] {
+  const pages = Array.isArray(raw) ? (raw as Array<Record<string, unknown>>) : [];
+  if (!pages.length) return [{ pageNumber: 1 }];
+  return pages.map((item, index) => ({
+    pageNumber: Number(item.pageNumber ?? item.page_number ?? index + 1) || index + 1,
+  }));
+}
+
 // Uploaded files get a blob: URL with no ".pdf" suffix, so detect PDFs by MIME type too.
 function isPdfDocument(doc: { document_url?: string; document_mime?: string }): boolean {
   if (!doc.document_url) return false;
@@ -381,7 +392,7 @@ export default function App() {
         document_url: processed.document_url || localUrl,
         document_mime: file.type,
         findings,
-        pages: processed.pages.length ? processed.pages : [{ pageNumber: 1 }],
+        pages: normalizePages(processed.pages),
       });
       setPage(1);
       setSelectedId(findings[0]?.rule_id || "");
