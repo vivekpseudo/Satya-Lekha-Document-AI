@@ -46,6 +46,23 @@ export async function evaluateCompliance(
   return parseResponse<Finding[]>(response);
 }
 
+/** Compare several documents of one filing (reports, statements, notice) with each other. */
+export async function crossCheckDocuments(documents: ProcessedDocument[]): Promise<Finding[]> {
+  const response = await fetch(`${API_BASE}/api/v1/compliance/cross-check`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      documents: documents.map((doc) => ({
+        document_type: doc.classification.document_type,
+        document_name: doc.document_name,
+        text: doc.text ?? "",
+        facts: doc.facts,
+      })),
+    }),
+  });
+  return parseResponse<Finding[]>(response);
+}
+
 export async function downloadComplianceReport(
   document: ProcessedDocument,
 ): Promise<Blob> {

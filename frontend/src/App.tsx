@@ -19,7 +19,7 @@ import {
 import { Button, Dropdown, Progress, Tag, Upload, message } from "antd";
 import type { UploadProps } from "antd";
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from "pdfjs-dist";
-import { downloadComplianceReport, evaluateCompliance, processDocument } from "./api";
+import { crossCheckDocuments, downloadComplianceReport, evaluateCompliance, processDocument } from "./api";
 import type { DocumentPage, EvidenceBox, Finding, ProcessedDocument, Status } from "./types";
 
 GlobalWorkerOptions.workerSrc = new URL(
@@ -369,6 +369,8 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(demo.findings[0].rule_id);
   const [showPins, setShowPins] = useState(true);
   const [loading, setLoading] = useState(false);
+  // Documents uploaded this session, by name, so they can be cross-checked against each other.
+  const sessionDocuments = useRef(new Map<string, ProcessedDocument>());
   const [messageApi, contextHolder] = message.useMessage();
 
   const counts = useMemo(() => ({
@@ -386,7 +388,19 @@ export default function App() {
     try {
       const localUrl = URL.createObjectURL(file);
       const processed = await processDocument(file);
-      const findings = await evaluateCompliance(processed);
+      const ownFindings = await evaluateCompliance(processed);
+      sessionDocuments.current.set(processed.document_name, processed);
+      let findings = ownFindings;
+      let crossNote = "";
+      if (sessionDocuments.current.size >= 2) {
+        try {
+          const crossFindings = await crossCheckDocuments([...sessionDocuments.current.values()]);
+          findings = [...ownFindings, ...crossFindings];
+          crossNote = ` Cross-checked against ${sessionDocuments.current.size - 1} other document(s).`;
+        } catch {
+          messageApi.warning("Cross-document checks could not be run.");
+        }
+      }
       setDocument({
         ...processed,
         document_url: processed.document_url || localUrl,
@@ -396,7 +410,7 @@ export default function App() {
       });
       setPage(1);
       setSelectedId(findings[0]?.rule_id || "");
-      messageApi.success("Document processed and compliance evaluation completed.");
+      messageApi.success(`Document processed and compliance evaluation completed.${crossNote}`);
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : "Processing failed");
     } finally {
@@ -429,7 +443,10 @@ export default function App() {
 
   const jumpToEvidence = (finding: Finding, evidence: EvidenceBox) => {
     setSelectedId(finding.rule_id);
-    setPage(evidence.page || evidence.source_page || 1);
+    // Cross-document evidence can come from another file; only jump within this one.
+    if (evidence.document && evidence.document !== document.document_name) return;
+    const target = evidence.page || evidence.source_page || 1;
+    setPage(Math.min(Math.max(target, 1), totalPages));
   };
 
   return (

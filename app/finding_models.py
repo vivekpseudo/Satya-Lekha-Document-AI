@@ -23,3 +23,14 @@ class ComplianceFindingResponse(BaseModel):
     evidence: list[dict]
     regulatory_evidence: list[dict]
     confidence: float = Field(ge=0, le=1)
+
+
+class CrossCheckDocument(BaseModel):
+    document_type: str
+    document_name: str = ""
+    text: str = ""
+    facts: list[dict] = Field(default_factory=list)
+
+
+class CrossCheckRequest(BaseModel):
+    documents: list[CrossCheckDocument] = Field(min_length=2, max_length=20)

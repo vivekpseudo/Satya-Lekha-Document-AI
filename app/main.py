@@ -13,7 +13,8 @@ from app.storage import save_processed_document
 from app.api_models import RegulationIn, RegulationSearchIn
 from app.regulatory_rag import add_regulation, retrieve_regulations, regulation_provider
 from app.rules_engine import ComplianceRulesEngine, RuleContext
-from app.finding_models import ComplianceEvaluateRequest, ComplianceFindingResponse
+from app.cross_rules import CrossDocumentEngine
+from app.finding_models import ComplianceEvaluateRequest, ComplianceFindingResponse, CrossCheckRequest
 from app.report_models import ComplianceReportRequest
 from app.report import build_compliance_report
 from fastapi.responses import FileResponse
@@ -220,6 +221,12 @@ def evaluate_compliance(
         else None
     )
     return ComplianceRulesEngine().evaluate(context, regulation_provider=provider)
+
+@app.post("/api/v1/compliance/cross-check")
+def cross_check_documents(payload: CrossCheckRequest) -> list[ComplianceFindingResponse]:
+    """Compare several documents of one filing (Directors' Report, Auditor's Report, statements, notice)."""
+    return CrossDocumentEngine().evaluate([d.model_dump() for d in payload.documents])
+
 
 from pathlib import Path
 

@@ -2,6 +2,7 @@ export type Status = "PASS" | "FAIL" | "REVIEW";
 
 export type EvidenceBox = {
   page: number;
+  document?: string; // set by cross-document findings: which document this evidence came from
   label?: string;
   value?: string | number;
   source_page?: number;
