@@ -1,5 +1,5 @@
 import { DownloadOutlined } from "@ant-design/icons";
-import { Alert, Button, Empty, Modal, Skeleton, Table, Tag } from "antd";
+import { Alert, Button, Empty, Grid, Modal, Skeleton, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import { downloadComplianceReport, getReport, listReports } from "./api";
@@ -15,6 +15,8 @@ const typeLabel = (t: string) => t.replace(/_/g, " ").replace(/^./, (c) => c.toU
 
 export default function History() {
   const { user } = useAuth();
+  // Below the "md" breakpoint (768px) a wide table cannot show the Open report button, so use cards.
+  const compact = !Grid.useBreakpoint().md;
   const [rows, setRows] = useState<ReportSummary[] | null>(null);
   const [error, setError] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
@@ -84,7 +86,27 @@ export default function History() {
 
         {error && <Alert type="error" showIcon message={error} />}
         {!error && rows === null && <Skeleton active />}
-        {rows && (
+        {rows && compact && (
+          rows.length === 0 ? (
+            <Empty description="No reports yet. Check a document and its report will appear here." />
+          ) : (
+            <ul className="history-cards">
+              {[...rows].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)).map((r) => (
+                <li key={r.id} className="history-card">
+                  <strong className="history-card-name">{r.document_name}</strong>
+                  <small className="muted">{typeLabel(r.document_type)} · {formatDate(r.created_at)}</small>
+                  <span className="result-tags">
+                    <Tag color="error">{r.counts.FAIL} critical</Tag>
+                    <Tag color="warning">{r.counts.REVIEW} review</Tag>
+                    <Tag color="success">{r.counts.PASS} passed</Tag>
+                  </span>
+                  <Button type="primary" ghost block onClick={() => setOpenId(r.id)}>Open report</Button>
+                </li>
+              ))}
+            </ul>
+          )
+        )}
+        {rows && !compact && (
           <Table<ReportSummary>
             rowKey="id"
             columns={columns}
@@ -101,6 +123,7 @@ export default function History() {
         onCancel={() => setOpenId(null)}
         title={detail ? detail.document_name : "Report"}
         width={820}
+        className="report-modal"
         destroyOnClose
         footer={[
           <Button key="pdf" icon={<DownloadOutlined />} disabled={!detail} onClick={() => void exportPdf()}>Export PDF</Button>,

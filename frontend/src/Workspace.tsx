@@ -97,7 +97,7 @@ function PdfJsViewer({
       try {
         const pdfPage = await pdf.getPage(page);
         const baseViewport = pdfPage.getViewport({ scale: 1 });
-        const availableWidth = Math.max(frameRef.current?.clientWidth || 760, 320);
+        const availableWidth = Math.max(frameRef.current?.clientWidth || 760, 240);
         const scale = Math.min(1.8, availableWidth / baseViewport.width);
         const viewport = pdfPage.getViewport({ scale });
         const canvas = canvasRef.current;
