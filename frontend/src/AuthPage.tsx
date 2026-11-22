@@ -1,7 +1,7 @@
 import { Alert, Button, Checkbox, Form, Input } from "antd";
 import { useEffect, useState } from "react";
 import { useAuth } from "./auth";
-import { Link, navigate } from "./router";
+import { Link, navigate, nextPath } from "./router";
 import SiteHeader from "./SiteHeader";
 
 type Values = {
@@ -19,7 +19,7 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
   const isRegister = mode === "register";
 
   useEffect(() => {
-    if (user) navigate("/app", true);
+    if (user) navigate(nextPath(), true);
   }, [user]);
 
   const submit = async (values: Values) => {
@@ -37,7 +37,7 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
       } else {
         await signIn(values.email.trim(), values.password);
       }
-      navigate("/app");
+      navigate(nextPath());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
     } finally {
@@ -94,8 +94,8 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
           </Form>
           <p className="auth-switch">
             {isRegister
-              ? <>Already have an account? <Link to="/login">Sign in</Link></>
-              : <>New here? <Link to="/register">Create an account</Link></>}
+              ? <>Already have an account? <Link to={`/login${window.location.search}`}>Sign in</Link></>
+              : <>New here? <Link to={`/register${window.location.search}`}>Create an account</Link></>}
           </p>
         </div>
       </main>

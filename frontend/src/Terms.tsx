@@ -1,3 +1,4 @@
+import { useAuth } from "./auth";
 import { Link } from "./router";
 import SiteHeader from "./SiteHeader";
 
@@ -34,6 +35,7 @@ const sections: Array<[string, string[]]> = [
 ];
 
 export default function Terms() {
+  const { user } = useAuth();
   return (
     <div className="page">
       <SiteHeader />
@@ -46,7 +48,7 @@ export default function Terms() {
             {paragraphs.map((p) => <p key={p}>{p}</p>)}
           </section>
         ))}
-        <p><Link to="/register">Back to registration</Link></p>
+        <p>{user ? <Link to="/app">Back to the app</Link> : <Link to="/register">Back to registration</Link>}</p>
       </main>
     </div>
   );

@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./auth";
 import History from "./History";
 import Home from "./Home";
 import { navigate, usePath } from "./router";
+import NotFound from "./NotFound";
 import Terms from "./Terms";
 import Workspace from "./Workspace";
 
@@ -12,7 +13,7 @@ import Workspace from "./Workspace";
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, ready } = useAuth();
   useEffect(() => {
-    if (ready && !user) navigate("/login", true);
+    if (ready && !user) navigate(`/login?next=${encodeURIComponent(window.location.pathname)}`, true);
   }, [ready, user]);
   if (!ready || !user) return <div className="page-loading"><Spin size="large" /></div>;
   return <>{children}</>;
@@ -27,7 +28,7 @@ function Routes() {
     case "/terms": return <Terms />;
     case "/app": return <RequireAuth><Workspace /></RequireAuth>;
     case "/history": return <RequireAuth><History /></RequireAuth>;
-    default: return <Home />;
+    default: return <NotFound />;
   }
 }
 

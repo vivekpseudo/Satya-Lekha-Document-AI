@@ -3,10 +3,16 @@ import { useEffect, useState, type AnchorHTMLAttributes, type MouseEvent } from 
 const listeners = new Set<() => void>();
 
 export function navigate(path: string, replace = false) {
-  if (path === window.location.pathname) return;
+  if (path === window.location.pathname + window.location.search) return;
   window.history[replace ? "replaceState" : "pushState"](null, "", path);
   window.scrollTo(0, 0);
   listeners.forEach((fn) => fn());
+}
+
+/** Where to go after signing in: the page that sent the user to /login, if it is an in-app path. */
+export function nextPath(fallback = "/app"): string {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") && !/^\/(login|register)/.test(next) ? next : fallback;
 }
 
 export function usePath(): string {
