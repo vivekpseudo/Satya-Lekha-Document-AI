@@ -87,6 +87,7 @@ Settings come from environment variables or `.env` (see [.env.example](.env.exam
 | `EMBEDDING_DIMENSIONS` | `384` | Must match the model. Use `768` with `gemini-embedding-001` |
 | `DATABASE_URL` | local PostgreSQL | `postgresql+psycopg://user:password@host:5432/db` |
 | `MAX_UPLOAD_MB` | `20` | Upload size limit |
+| `AUTH_SECRET` | `change-me-in-production` | Signs login tokens. **Set a long random value** (`openssl rand -hex 32`) in any real deployment |
 | `CORS_ORIGINS` | the Vite dev origins | Comma-separated origins allowed to call the API. Not needed when the UI is served by the API itself |
 | `GOOGLE_CLOUD_PROJECT`, `DOCUMENT_AI_LOCATION`, `DOCUMENT_AI_PROCESSOR_ID`, `GOOGLE_CLOUD_LOCATION` | empty | Only for `google` mode |
 | `FASTEMBED_CACHE_PATH` | system temp dir | Where the local embedding model is cached |
@@ -208,9 +209,15 @@ tests/                    pytest suite
 
 ## Web app
 
+- Pages: a **home** page explaining the features, **register** and **sign in** (full name, organization name, email,
+  password, and a required tick for the [Terms & Conditions](frontend/src/Terms.tsx) page), the upload page, and
+  **History**. History is a grid of the signed-in user's past reports (document name and date); *Open report* shows the
+  report in a dialog. Only the finished report is stored, never the uploaded file.
+- Accounts and history use `POST /api/v1/auth/register`, `/auth/login`, `GET /auth/me` and `/api/v1/reports`. The
+  tables are created by `python -m app.init_db`. The document-processing endpoints themselves are not behind a login.
 - Upload a PDF. The document renders with PDF.js; evidence from a selected finding is highlighted on the page,
   with numbered audit pins.
-- The right-hand panel lists the findings, filterable by severity. Selecting evidence jumps to its page.
+- The right-hand panel lists the findings. Selecting evidence jumps to its page.
 - **Print report** and **Export PDF report** produce the same PDF from `POST /api/v1/compliance/report`.
 - The control score is a summary of the findings (`PASS` 100%, `REVIEW` 50%, `FAIL` 0%), not an audit opinion.
 - Documents uploaded in a session are remembered until the page is reloaded, so they can be cross-checked.

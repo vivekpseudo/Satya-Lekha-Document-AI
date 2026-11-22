@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     google_cloud_location: str = "global"
     # Browser origins allowed to call the API (comma separated). Only needed when the
     # frontend is served from a different origin, such as the Vite dev server.
+    # Signs login tokens. Set a long random value in production (e.g. `openssl rand -hex 32`).
+    auth_secret: str = "change-me-in-production"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

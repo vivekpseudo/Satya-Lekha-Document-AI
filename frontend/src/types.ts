@@ -53,3 +53,20 @@ export type ProcessedDocument = {
   facts: Record<string, unknown>[];
   findings: Finding[];
 };
+
+export type User = { id: number; email: string; full_name: string; organization: string };
+export type Session = { token: string; user: User };
+
+export type ReportSummary = {
+  id: number;
+  document_name: string;
+  document_type: string;
+  reporting_date?: string;
+  created_at: string;
+  counts: { FAIL: number; REVIEW: number; PASS: number };
+};
+
+export type ReportDetail = ReportSummary & {
+  classification: { document_type: string; confidence: number };
+  findings: Finding[];
+};
