@@ -1,23 +1,1137 @@
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "jurisdiction": "IN",
-  "framework": "Ind AS",
+  "generated_by": "python -m app.rule_docs",
   "rules": [
     {
       "rule_id": "INDAS-FS-001",
       "title": "Balance-sheet equation check",
-      "status": "prototype",
-      "description": "Checks extracted total assets against total liabilities plus total equity.",
-      "required_evidence": ["total assets", "total liabilities", "total equity"],
-      "source_reference": "Populate with an authoritative regulatory source before production use."
+      "family": "INDAS-FS",
+      "document_types": [
+        "balance_sheet"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS"
+      ]
     },
     {
       "rule_id": "DATA-QUALITY-001",
       "title": "Revenue sign check",
-      "status": "prototype",
-      "description": "Flags extracted negative revenue for review.",
-      "required_evidence": ["revenue|turnover|sales"],
-      "source_reference": "Data-quality heuristic; not itself a regulatory requirement."
+      "family": "DATA-QUALITY",
+      "document_types": [
+        "balance_sheet",
+        "other",
+        "profit_and_loss"
+      ],
+      "regulators": [],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSBS-001",
+      "title": "Balance sheet balances in both years",
+      "family": "FSBS",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSBS-002",
+      "title": "Sub-totals add up to the balance sheet totals",
+      "family": "FSBS",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSBS-003",
+      "title": "Balance sheet line items add up to their sections",
+      "family": "FSBS",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSBS-004",
+      "title": "Schedule III headings on the balance sheet",
+      "family": "FSBS",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSBS-005",
+      "title": "Comparative figures and units stated",
+      "family": "FSBS",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSBS-006",
+      "title": "Note totals agree with the statements",
+      "family": "FSBS",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSBS-007",
+      "title": "Statements signed by directors and auditor, with UDIN",
+      "family": "FSBS",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSPL-001",
+      "title": "Schedule III headings on the statement of profit and loss",
+      "family": "FSPL",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSPL-002",
+      "title": "Expense lines add up to total expenses",
+      "family": "FSPL",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSPL-003",
+      "title": "Total income less total expenses equals profit before tax",
+      "family": "FSPL",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSPL-004",
+      "title": "Profit before tax less tax equals profit for the year",
+      "family": "FSPL",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSPL-005",
+      "title": "Earnings per share consistent with profit and share capital",
+      "family": "FSPL",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "FSX-001",
+      "title": "Reserves move by the profit or loss for the year",
+      "family": "FSX",
+      "document_types": [
+        "balance_sheet",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "CFS-001",
+      "title": "Cash flow statement has all required parts (AS 3 / Ind AS 7)",
+      "family": "CFS",
+      "document_types": [
+        "balance_sheet",
+        "cash_flow",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "CFS-002",
+      "title": "Operating activities add up",
+      "family": "CFS",
+      "document_types": [
+        "balance_sheet",
+        "cash_flow",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "CFS-003",
+      "title": "Investing and financing totals add up",
+      "family": "CFS",
+      "document_types": [
+        "balance_sheet",
+        "cash_flow",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "CFS-004",
+      "title": "Net change in cash equals A + B + C",
+      "family": "CFS",
+      "document_types": [
+        "balance_sheet",
+        "cash_flow",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "CFS-005",
+      "title": "Opening cash plus net change equals closing cash",
+      "family": "CFS",
+      "document_types": [
+        "balance_sheet",
+        "cash_flow",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "CFS-006",
+      "title": "Opening cash equals the prior year's closing cash",
+      "family": "CFS",
+      "document_types": [
+        "balance_sheet",
+        "cash_flow",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "CFS-007",
+      "title": "Closing cash agrees with the balance sheet",
+      "family": "CFS",
+      "document_types": [
+        "balance_sheet",
+        "cash_flow",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "CFS-008",
+      "title": "Profit, depreciation and finance cost agree with the statement of profit and loss",
+      "family": "CFS",
+      "document_types": [
+        "balance_sheet",
+        "cash_flow",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "CFS-009",
+      "title": "Cash flow statement included (s.2(40))",
+      "family": "CFS",
+      "document_types": [
+        "balance_sheet",
+        "cash_flow",
+        "profit_and_loss"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "DIRREP-001",
+      "title": "Directors' Responsibility Statement (s.134(5))",
+      "family": "DIRREP",
+      "document_types": [
+        "directors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "DIRREP-002",
+      "title": "Board meetings disclosed (s.134(3)(b))",
+      "family": "DIRREP",
+      "document_types": [
+        "directors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "DIRREP-003",
+      "title": "Board meeting frequency (s.173)",
+      "family": "DIRREP",
+      "document_types": [
+        "directors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "DIRREP-004",
+      "title": "Auditor disclosures (s.134(3)(f), s.139, s.141)",
+      "family": "DIRREP",
+      "document_types": [
+        "directors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "DIRREP-005",
+      "title": "State of affairs, reserves, dividend, material changes (s.134(3)(i)-(l))",
+      "family": "DIRREP",
+      "document_types": [
+        "directors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "DIRREP-006",
+      "title": "Loans, guarantees and investments (s.186, s.134(3)(g))",
+      "family": "DIRREP",
+      "document_types": [
+        "directors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "DIRREP-007",
+      "title": "Related party transactions (s.188, s.134(3)(h))",
+      "family": "DIRREP",
+      "document_types": [
+        "directors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "DIRREP-008",
+      "title": "Other statutory disclosures (s.134(3)(m)-(o))",
+      "family": "DIRREP",
+      "document_types": [
+        "directors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "DIRREP-009",
+      "title": "Annual return disclosure (s.92(3) / s.134(3)(a))",
+      "family": "DIRREP",
+      "document_types": [
+        "directors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "DIRREP-010",
+      "title": "Report signed by directors (s.134(6))",
+      "family": "DIRREP",
+      "document_types": [
+        "directors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "DIRREP-011",
+      "title": "Report dated after the financial year-end",
+      "family": "DIRREP",
+      "document_types": [
+        "directors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "AUDREP-001",
+      "title": "Addressee and title (SA 700)",
+      "family": "AUDREP",
+      "document_types": [
+        "auditors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "AUDREP-002",
+      "title": "Audit opinion present and type (SA 700 / SA 705)",
+      "family": "AUDREP",
+      "document_types": [
+        "auditors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "AUDREP-003",
+      "title": "Basis for Opinion (SA 700)",
+      "family": "AUDREP",
+      "document_types": [
+        "auditors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "AUDREP-004",
+      "title": "Responsibilities of management and auditor (SA 700)",
+      "family": "AUDREP",
+      "document_types": [
+        "auditors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "AUDREP-005",
+      "title": "Report on other legal and regulatory requirements (s.143(3))",
+      "family": "AUDREP",
+      "document_types": [
+        "auditors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "AUDREP-006",
+      "title": "CARO reference and version",
+      "family": "AUDREP",
+      "document_types": [
+        "auditors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "AUDREP-007",
+      "title": "Internal financial controls report (s.143(3)(i))",
+      "family": "AUDREP",
+      "document_types": [
+        "auditors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "AUDREP-008",
+      "title": "Auditor's signature block and UDIN (SA 700, ICAI)",
+      "family": "AUDREP",
+      "document_types": [
+        "auditors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "AUDREP-009",
+      "title": "Report dated after the financial year-end",
+      "family": "AUDREP",
+      "document_types": [
+        "auditors_report"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "NOTICE-001",
+      "title": "Meeting date, time and venue stated (s.101, SS-2)",
+      "family": "NOTICE",
+      "document_types": [
+        "agm_notice"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "NOTICE-002",
+      "title": "AGM day and hours (s.96(2))",
+      "family": "NOTICE",
+      "document_types": [
+        "agm_notice"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "NOTICE-003",
+      "title": "AGM within six months of year-end (s.96(1))",
+      "family": "NOTICE",
+      "document_types": [
+        "agm_notice"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "NOTICE-004",
+      "title": "Notice period of at least 21 clear days (s.101(1))",
+      "family": "NOTICE",
+      "document_types": [
+        "agm_notice"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "NOTICE-005",
+      "title": "Business at the AGM (s.102(2), s.139, SS-2)",
+      "family": "NOTICE",
+      "document_types": [
+        "agm_notice"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "NOTICE-006",
+      "title": "Auditor appointment terms (s.139, s.142)",
+      "family": "NOTICE",
+      "document_types": [
+        "agm_notice"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "NOTICE-007",
+      "title": "Proxy statement (s.105)",
+      "family": "NOTICE",
+      "document_types": [
+        "agm_notice"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "NOTICE-008",
+      "title": "Issued by order of the Board, with place and date",
+      "family": "NOTICE",
+      "document_types": [
+        "agm_notice"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "NOTICE-009",
+      "title": "Addressed to members, directors and auditors (s.101(1))",
+      "family": "NOTICE",
+      "document_types": [
+        "agm_notice"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "NOTICE-010",
+      "title": "Explanatory statement for special business (s.102(1))",
+      "family": "NOTICE",
+      "document_types": [
+        "agm_notice"
+      ],
+      "regulators": [
+        "MCA"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "INV-001",
+      "title": "Invoice number and date (CGST Rule 46(b), (c))",
+      "family": "INV",
+      "document_types": [
+        "invoice"
+      ],
+      "regulators": [
+        "CBIC"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "INV-002",
+      "title": "Recipient name and address (CGST Rule 46(e))",
+      "family": "INV",
+      "document_types": [
+        "invoice"
+      ],
+      "regulators": [
+        "CBIC"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "INV-003",
+      "title": "GST particulars on the invoice (CGST Rule 46)",
+      "family": "INV",
+      "document_types": [
+        "invoice"
+      ],
+      "regulators": [
+        "CBIC"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "INV-004",
+      "title": "GSTIN format and check digit",
+      "family": "INV",
+      "document_types": [
+        "invoice"
+      ],
+      "regulators": [
+        "CBIC"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "INV-005",
+      "title": "PAN format and entity type",
+      "family": "INV",
+      "document_types": [
+        "invoice"
+      ],
+      "regulators": [
+        "CBIC"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "INV-006",
+      "title": "Line items add up to the total",
+      "family": "INV",
+      "document_types": [
+        "invoice"
+      ],
+      "regulators": [
+        "CBIC"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "INV-007",
+      "title": "Amount in words matches the total",
+      "family": "INV",
+      "document_types": [
+        "invoice"
+      ],
+      "regulators": [
+        "CBIC"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "INV-008",
+      "title": "Supplier's signature (CGST Rule 46(r))",
+      "family": "INV",
+      "document_types": [
+        "invoice"
+      ],
+      "regulators": [
+        "CBIC"
+      ],
+      "frameworks": [
+        "Ind AS",
+        "Other"
+      ]
+    },
+    {
+      "rule_id": "XDOC-001",
+      "title": "Company name and CIN agree across documents",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-002",
+      "title": "Financial year-end agrees across documents",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-003",
+      "title": "Auditor named consistently across documents",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-004",
+      "title": "Documents are signed in a sensible order",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-005",
+      "title": "Board's reply matches the auditor's opinion (s.134(3)(f))",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-006",
+      "title": "Profit or loss is described consistently",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-007",
+      "title": "Directors' Report financial summary agrees with the statements",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-008",
+      "title": "Share capital change matches the Directors' Report",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-009",
+      "title": "Same directors sign the Directors' Report and the statements",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-010",
+      "title": "Auditor's term agrees between the Directors' Report and the notice",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-011",
+      "title": "Statements named in the audit opinion are in the package",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-012",
+      "title": "Registered office address agrees across documents",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-013",
+      "title": "Papers the notice asks members to adopt are in the package",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-014",
+      "title": "Dividend agrees between the Directors' Report and the notice",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-015",
+      "title": "Invoice is addressed to the company",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-016",
+      "title": "Services billed by the statutory auditor (s.144)",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
+    },
+    {
+      "rule_id": "XDOC-017",
+      "title": "Year-end invoice for the year's services is reflected in the statements",
+      "family": "XDOC",
+      "document_types": [
+        "package"
+      ],
+      "regulators": [],
+      "frameworks": []
     }
   ]
 }

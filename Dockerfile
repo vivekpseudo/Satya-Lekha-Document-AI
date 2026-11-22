@@ -20,6 +20,13 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Bake the local embedding model into the image so the first request does not download it
+# from Hugging Face. Change EMBEDDING_MODEL at build time to use a different model, and
+# remove this step if you only ever use EMBEDDER=google.
+ARG EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
+ENV FASTEMBED_CACHE_PATH=/opt/fastembed
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding('${EMBEDDING_MODEL}')"
+
 # Copy backend application code
 COPY app ./app
 COPY tests ./tests

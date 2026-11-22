@@ -1,56 +1,66 @@
-# Satya-Lekha Frontend
+# Satya-Lekha web app
 
-Vite + React + TypeScript + Tailwind CSS + Ant Design frontend for the Satya-Lekha compliance platform.
+React + Vite + TypeScript + Tailwind CSS + Ant Design, with PDF.js for rendering. It talks to the FastAPI backend
+described in the [main README](../README.md).
 
 ## Run
+
+Start the backend first (`uvicorn app.main:app --reload` from the repository root), then:
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev          # http://localhost:5173
 ```
 
-Build:
+Node 20.19+ or 22.12+ is required (a Vite requirement).
 
-```bash
-npm run build
+| Command | Purpose |
+|---|---|
+| `npm run dev` | dev server with hot reload |
+| `npx tsc -b` | type check |
+| `npm run build` | type check and production build into `dist/` |
+
+## Where it finds the API
+
+`VITE_API_BASE_URL` sets the backend URL at **build time**:
+
+| Setup | Value |
+|---|---|
+| `npm run dev` (default) | `http://localhost:8000` |
+| Served by the API itself, as in the Docker image | `/api`, set by the `Dockerfile` |
+| UI and API on different hosts | the API's public URL |
+
+In development the browser calls the API directly from `localhost:5173`, so that origin must be allowed by the
+backend. It is by default; `CORS_ORIGINS` in the backend's `.env` changes the list. A Docker deployment serves
+the UI from the same origin and needs no CORS setting. Rebuild after changing `VITE_API_BASE_URL`.
+
+## What it does
+
+- **Upload** a PDF. Before the first upload the page shows a placeholder statement, not real data.
+- **Preview** the document with PDF.js. Selecting a finding highlights its evidence on the page and shows numbered
+  audit pins; clicking evidence jumps to its page. Highlights need bounding boxes, which the local extractor and
+  Document AI's OCR processors provide and Layout Parser does not.
+- **Findings** are listed with their status, severity, confidence, evidence and regulatory evidence, and can be
+  filtered by severity.
+- **Cross-document checks.** Documents uploaded in a session are remembered (until the page is reloaded). From the
+  second upload the app also calls `POST /api/v1/compliance/cross-check` and appends those findings (`XDOC-…`) to
+  the document's own. Their evidence is labelled with the file it came from; clicking evidence from another file
+  selects the finding but does not move the page.
+- **Print report** and **Export PDF report** both use `POST /api/v1/compliance/report`, so they produce the same
+  PDF. Print sends that PDF to the printer from a hidden frame (or opens it in a new tab if the browser will not
+  print an embedded PDF).
+- **Control score:** `PASS` counts 100%, `REVIEW` 50%, `FAIL` 0%, averaged over the findings. It is a summary for
+  the screen, not an audit opinion.
+
+## Layout
+
+```
+src/App.tsx      the screen: upload, preview, findings, session memory
+src/api.ts       calls to the backend
+src/types.ts     shared types
+src/styles.css   styles
 ```
 
-## UX direction
-
-The UI is based on the supplied audit/verification references, adapted for Satya-Lekha:
-
-- left-side source financial statement / PDF preview
-- right-side compliance and verification panel
-- PASS / FAIL / REVIEW findings
-- regulatory evidence
-- financial variance cards
-- audit pins
-- document upload
-- compliance run
-- PDF report export
-- responsive mobile layout
-
-The current screen uses representative fixture data. Connect the existing FastAPI endpoints to replace the fixture state with live Document AI and compliance results.
-
-## Planned API integration
-
-- `POST /api/v1/documents/process`
-- `POST /api/v1/documents/process-and-store`
-- `POST /api/v1/compliance/evaluate`
-- `POST /api/v1/compliance/report`
-- `POST /api/v1/regulations/search`
-
-
-## Live workflow
-
-The UI now calls the FastAPI service for document processing, compliance evaluation and PDF report generation. Set `VITE_API_BASE_URL` for the backend URL.
-
-Evidence returned with page numbers and normalized bounding boxes is rendered as highlights and clickable audit pins. Selecting an evidence item navigates to its source page.
-
-The control score is calculated from the current rule findings (PASS = 100% contribution, REVIEW = 50%, FAIL = 0%) and is therefore a UI summary metric, not a statutory audit opinion.
-
-
-## PDF evidence overlay
-
-PDF documents are rendered with PDF.js. Document AI normalized coordinates are overlaid on the rendered page so findings can display true source highlights and clickable audit pins. Evidence coordinates are expected as normalized `x/y/width/height` values in the 0–1 range.
+The Docker image builds this app and serves it from the API. `Dockerfile` and `nginx.conf` in this directory are
+an alternative for serving the UI from its own Nginx container; they are not used by the default deployment.

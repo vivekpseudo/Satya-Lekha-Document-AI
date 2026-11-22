@@ -1,697 +1,262 @@
 # Satya-Lekha Document AI
 
-Google Document AI ingestion and financial-document normalization service for Satya-Lekha AI.
+Reads the documents of an Indian company's annual filing — financial statements, Directors' Report, Auditor's
+Report, AGM notice, invoices — and checks them against the Companies Act, 2013 and related rules. Every check is
+a deterministic rule whose finding quotes the text or figures it relied on.
 
-## Current pipeline
+It answers questions such as: do both years of the balance sheet balance? Does the cash flow statement tie to the
+balance sheet? Does the Directors' Report agree with the statements about the year's result? Is the UDIN on the
+audit report? Is the statutory auditor billing the company for work s.144 restricts?
+
+> **A finding is a pointer for a reviewer, not an opinion.** A passing result means documents are consistent with
+> each other, not that they are right. The legal references come from the authors' reading of the law and have
+> **not** been reviewed by a qualified professional. See [Limitations](#limitations).
+
+## What it does
 
 ```
-PDF / image
-   ↓
-Google Document AI
-   ↓
-OCR + layout + tables + entities
-   ↓
-Financial document classification
-   ↓
-Balance Sheet / P&L / Cash Flow / Notes classification
-   ↓
-Financial table normalization
-   ↓
-PostgreSQL-ready document/fact model
-   ↓
-Regulatory RAG contract (pgvector-ready)
+PDF ──► extraction ──► classification ──► normalisation ──► rules ──► findings ──► PDF report
+        (local or        (9 document        (rows, both       (per-document  evidence +      (print /
+         Google)          types)             years, bboxes)    per-document   regulatory       export)
+                                                              and cross-
+                                                              document)
 ```
 
-## Components
+- **Extraction** reads text, tables and positions from a PDF. The default is local ([PyMuPDF](https://pymupdf.readthedocs.io/)),
+  so no cloud account is needed. Google Document AI can be used instead for scans and images.
+- **Classification** labels each document: `balance_sheet`, `profit_and_loss`, `cash_flow`, `notes_to_accounts`,
+  `directors_report`, `auditors_report`, `agm_notice`, `invoice` or `other`.
+- **Rules** run per document and across documents. The full list is in [docs/RULES.md](docs/RULES.md).
+- **Regulatory evidence** (optional): regulation text you load is embedded (locally by default) and stored in
+  PostgreSQL + pgvector, so each finding can cite candidate passages with their source and effective dates.
+- **Web app** shows the PDF with highlights on the evidence, the findings, a control score, and a printable or
+  downloadable PDF report.
 
-- `app/document_ai.py` — Google Document AI processor integration.
-- `app/normalizer.py` — converts Document AI output into stable JSON.
-- `app/classifier.py` — deterministic financial-document classification baseline.
-- `app/financial_normalizer.py` — monetary parsing and statement-section grouping.
-- `app/models.py` — SQLAlchemy models for documents and financial facts.
-- `app/db.py` — PostgreSQL session/health helpers.
-- `app/rag.py` — retrieval contract for regulatory evidence.
-- `app/schema.sql` — pgvector regulation-chunk schema.
-- `docker-compose.postgres.yml` — local PostgreSQL + pgvector.
+## Quick start (local)
 
-## Configuration
-
-Copy `.env.example` to `.env`:
-
-```env
-GOOGLE_CLOUD_PROJECT=your-project
-DOCUMENT_AI_LOCATION=us
-DOCUMENT_AI_PROCESSOR_ID=your-processor-id
-MAX_UPLOAD_MB=20
-DATABASE_URL=postgresql+psycopg://satya:satya@localhost:5432/satya_lekha
-```
-
-Authenticate Google Cloud locally:
+Requirements: Python 3.11+, Node 20.19+ or 22.12+ (a Vite requirement), and Docker (for PostgreSQL + pgvector).
 
 ```bash
-gcloud auth application-default login
-```
-
-Start PostgreSQL:
-
-```bash
-docker compose -f docker-compose.postgres.yml up -d
-```
-
-Install and run:
-
-```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+
+cp .env.example .env                                  # defaults work for local use
+docker compose -f docker-compose.postgres.yml up -d   # PostgreSQL 16 + pgvector on :5432
+python -m app.init_db                                 # creates the tables and the vector index
+uvicorn app.main:app --reload                         # API on http://localhost:8000
 ```
 
-Swagger UI: http://localhost:8000/docs
-
-## Process a document
-
-```bash
-curl -X POST http://localhost:8000/api/v1/documents/process \
-  -F "file=@annual-report.pdf"
-```
-
-The response now includes:
-
-- extracted text
-- pages and tables
-- Document AI entities
-- document classification and confidence
-- normalized financial table rows
-- basic asset/liability/equity/income/expense grouping
-- source-page traceability
-
-The classifier is intentionally a transparent baseline. It should be evaluated against a labeled corpus of Indian annual reports before being used for compliance decisions.
-
-## PostgreSQL model
-
-The initial model stores:
-
-- documents
-- document classification
-- raw text
-- normalized JSON
-- financial facts
-- source page/text for traceability
-
-Regulatory chunks are designed for PostgreSQL + pgvector. The production retrieval layer should apply jurisdiction/regulator/framework/effective-date filters before semantic retrieval.
-
-## Regulatory RAG
-
-The RAG layer is deliberately evidence-first. A production finding should carry:
-
-```text
-finding
-→ extracted financial fact
-→ applicable rule/chunk
-→ source URI
-→ effective date
-→ reasoning
-→ confidence
-```
-
-Do not use an LLM as the authoritative source of a regulation. Regulatory text should be ingested from authoritative sources and retained with provenance/version metadata.
-
-## Testing
-
-```bash
-pytest -q
-```
-
-## Production hardening
-
-Before exposing this service publicly, add authentication/authorization, object storage, asynchronous processing, migrations (Alembic), audit logging, retention/deletion controls, request tracing, rate limits, tenant isolation, secrets management, encryption, and a labeled evaluation set.
-
-Never commit service-account keys or database credentials.
-
-
-## Persistence and RAG APIs
-
-### Store a processed document
-
-`POST /api/v1/documents/process-and-store`
-
-This runs Document AI + classification + normalization and persists the document and extracted financial facts in PostgreSQL.
-
-### Index a regulatory source
-
-`POST /api/v1/regulations`
-
-The service generates a `gemini-embedding-001` retrieval-document embedding and stores it with the regulation metadata. The implementation uses 768 dimensions to keep the pgvector schema compact; Google's current embedding API supports controlling output dimensionality. citeturn0search1
-
-### Search regulatory sources
-
-`POST /api/v1/regulations/search`
-
-The query is embedded as a retrieval query and searched with pgvector cosine distance. Results retain the regulation ID, source URI and effective dates so later compliance findings can cite the underlying source.
-
-## Database setup
-
-Run:
-
-```bash
-docker compose -f docker-compose.postgres.yml up -d
-psql "$DATABASE_URL" -f app/schema.sql
-```
-
-The current database layer is a prototype. Add Alembic migrations before production deployment.
-
-
-## Compliance rules engine
-
-`POST /api/v1/compliance/evaluate`
-
-The prototype rules engine evaluates normalized financial facts and returns structured findings:
-
-- `PASS`
-- `FAIL`
-- `REVIEW`
-
-Every finding carries a rule ID, severity, message, confidence and source evidence.
-
-The initial rules are deliberately limited to structural/data-quality checks. Regulatory assertions must be linked to authoritative Ind AS/SEBI/RBI source material and effective dates before production compliance use.
-
-## Classification evaluation
-
-`tests/test_labeled_classifier_fixture.py` provides a small synthetic fixture to validate the classifier contract. It is **not** a substitute for a real annual-report corpus.
-
-For meaningful classification evaluation, create a versioned dataset with document/page-level labels for:
-
-- balance sheet
-- statement of profit and loss
-- cash flow statement
-- notes to accounts
-- accounting policies
-- auditor report
-- other schedules
-
-Recommended metrics: macro F1, per-class precision/recall, confusion matrix, and abstention/review rate.
-
-## Compliance + regulatory evidence
-
-The compliance endpoint now optionally retrieves regulatory evidence for each rule.
-
-`POST /api/v1/compliance/evaluate`
-
-Each finding can contain financial evidence plus regulatory evidence: regulation ID, title, source text, source URI, effective dates, and similarity. Regulatory retrieval is filtered by the reporting date before vector similarity ranking, so future/expired chunks are excluded for historical reporting periods.
-
-The current rule IDs remain prototype identifiers. Before production compliance use, populate their authoritative regulatory references and add rule-specific applicability conditions.
-
-## Important design rule
-
-Satya-Lekha must not treat vector similarity as proof that a regulation applies. Retrieval is evidence discovery; deterministic rule metadata decides jurisdiction, framework, statement type, and effective-date applicability. The regulatory source remains authoritative.
-
-
-## Final PDF report
-
-The system now generates a final compliance report as a PDF:
-
-`POST /api/v1/compliance/report`
-
-The report includes:
-
-- A first-page executive summary with PASS / FAIL / REVIEW counts and interpretation
-
-- company and source-document metadata
-- document classification and confidence
-- PASS / FAIL / REVIEW summary
-- each compliance rule finding
-- financial evidence and source pages
-- retrieved regulatory evidence
-- regulation IDs and source URIs
-- effective dates
-- confidence
-- methodology and limitations
-
-The PDF is generated with ReportLab and returned as `application/pdf`.
-
-
-## Web application
-
-The repository now includes a production-oriented frontend under `frontend/`:
-
-- Vite
-- React
-- TypeScript
-- Tailwind CSS
-- Ant Design
-- PDF.js document rendering
-- page navigation
-- Document AI evidence highlights
-- clickable audit pins
-- live compliance score
-- FastAPI integration
-- PDF compliance report export
-
-Run locally:
+In a second terminal:
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev                                           # UI on http://localhost:5173
 ```
 
-Set `VITE_API_BASE_URL` when the API is not available at the default local backend.
+API docs: <http://localhost:8000/docs>. Health check: `curl localhost:8000/health`.
 
-## Docker Compose deployment
+The first time regulation text is embedded, the local embedding model (about 130 MB) is downloaded from Hugging Face.
 
-The root `docker-compose.yml` runs the complete application:
+> **Do not initialise the database with `psql -f app/schema.sql`.** The file hard-codes a 768-dimension vector
+> column, while the default local model produces 384. `python -m app.init_db` sizes the column from
+> `EMBEDDING_DIMENSIONS`.
 
-```
-Browser
-   ↓
-Frontend / Nginx
-   ↓ /api/*
-FastAPI
-   ↓
-PostgreSQL + pgvector
-   ↓
-Regulatory evidence
-```
+### Try it
 
-It provides:
-
-- PostgreSQL 16 + pgvector
-- FastAPI backend
-- React/Vite frontend served by Nginx
-- health checks
-- persistent PostgreSQL volume
-- automatic database initialization
-- Google Document AI credential mounting
-- API reverse proxy
-
-Configure:
+Upload documents in the web app, or call the API directly:
 
 ```bash
-cp .env.example .env
-mkdir -p secrets
-# place the Google service-account JSON at:
-# secrets/google-service-account.json
-
-docker compose up -d --build
+curl -X POST localhost:8000/api/v1/documents/process -F "file=@annual-report.pdf"
 ```
 
-The web application is available on `http://localhost:8080` by default.
+Upload several documents of the same filing in one session (for example the statements, the Directors' Report, the
+Auditor's Report and the notice). From the second upload the app also runs the **cross-document checks** and
+shows them with the document's own findings.
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for deployment and production-hardening guidance.
+## Configuration
 
-### Environment
+Settings come from environment variables or `.env` (see [.env.example](.env.example)).
 
-Required Google settings:
+| Variable | Default | Purpose |
+|---|---|---|
+| `EXTRACTOR` | `local` | `local` (PyMuPDF, text-based PDFs) or `google` (Document AI: also scans and images) |
+| `EMBEDDER` | `local` | `local` (fastembed, ONNX) or `google` (Vertex AI) |
+| `EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | For Google use `gemini-embedding-001` |
+| `EMBEDDING_DIMENSIONS` | `384` | Must match the model. Use `768` with `gemini-embedding-001` |
+| `DATABASE_URL` | local PostgreSQL | `postgresql+psycopg://user:password@host:5432/db` |
+| `MAX_UPLOAD_MB` | `20` | Upload size limit |
+| `CORS_ORIGINS` | the Vite dev origins | Comma-separated origins allowed to call the API. Not needed when the UI is served by the API itself |
+| `GOOGLE_CLOUD_PROJECT`, `DOCUMENT_AI_LOCATION`, `DOCUMENT_AI_PROCESSOR_ID`, `GOOGLE_CLOUD_LOCATION` | empty | Only for `google` mode |
+| `FASTEMBED_CACHE_PATH` | system temp dir | Where the local embedding model is cached |
+| `SATYA_LEKHA_LOGO_PATH` | none | Optional logo for the PDF report |
 
-- `GOOGLE_CLOUD_PROJECT`
-- `DOCUMENT_AI_LOCATION`
-- `DOCUMENT_AI_PROCESSOR_ID`
+**Changing the embedding model or dimensions** means the existing `regulation_chunks` vectors no longer fit: drop
+that table, run `python -m app.init_db`, and ingest the regulations again. Vectors from different models cannot
+be mixed.
 
-Deployment settings:
+### Using Google Document AI
 
-- `POSTGRES_PASSWORD`
-- `WEB_PORT`
-
-Never commit `.env`, Google service-account credentials, database passwords, or other secrets.
-
-## End-to-end architecture
-
-```
-                    Satya-Lekha Web
-                         │
-             ┌───────────┴───────────┐
-             │                       │
-       Document Upload          Compliance UI
-             │                       │
-             ▼                       ▼
-       Google Document AI       Findings / Score
-             │                       │
-       OCR + Tables + Layout         │
-             │                       │
-             ▼                       │
-     Financial Normalization         │
-             │                       │
-             ▼                       │
-      PostgreSQL / pgvector          │
-             │                       │
-       ┌─────┴─────┐                 │
-       ▼           ▼                 │
-  Rules Engine   Regulatory RAG ─────┘
-       │
-       ▼
- PASS / FAIL / REVIEW
-       │
-       ▼
- PDF Compliance Report
-```
-
-
-## Production deployment
-
-The repository can be deployed on a Linux VPS with Docker. The recommended production topology is:
-
-```
-Internet
-   │
-   ▼
-Nginx Proxy Manager / Reverse Proxy
-   │
-   ├── https://satya-lekha.example.com
-   │       ▼
-   │   Frontend container (Nginx)
-   │
-   └── https://api.satya-lekha.example.com
-           ▼
-       FastAPI container
-           │
-           ├── PostgreSQL + pgvector
-           ├── Google Document AI
-           └── Regulatory/RAG data
-```
-
-### Prerequisites
-
-Install the following on the deployment host:
-
-- Ubuntu/Debian Linux
-- Docker Engine
-- Docker Compose v2
-- Git
-- Nginx Proxy Manager or another TLS reverse proxy
-- At least 4 CPU cores and 8 GB RAM for the document-processing MVP
-- Additional CPU/GPU resources are required when hosting local OCR/LLM models
-- A persistent disk for PostgreSQL, uploaded documents, logs, and model/data assets
-
-Verify:
+Set `EXTRACTOR=google` and the three `GOOGLE_*` values. Document AI does **not** accept API keys: it needs a
+service-account key (or Application Default Credentials). Grant the service account *Document AI API User*
+(and *Vertex AI User* for `EMBEDDER=google`), then either:
 
 ```bash
-docker --version
-docker compose version
-git --version
+gcloud auth application-default login                              # local development
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json  # servers
 ```
 
-### 1. Clone the repository
+Both Layout Parser and OCR / Form Parser processors are understood. Layout Parser returns no bounding boxes, so
+evidence highlights on the PDF are unavailable in that mode.
+
+Never commit service-account keys or `.env`. Both are in `.gitignore`.
+
+## Documents and rules
+
+| Document | Rules | Highlights |
+|---|---|---|
+| Balance sheet | `FSBS-001`–`007`, `INDAS-FS-001` | both years balance, sub-totals and line items add up, Schedule III headings, note totals tie, signatures and UDIN |
+| Profit and loss | `FSPL-001`–`005`, `FSX-001`, `DATA-QUALITY-001` | expense totals, profit before and after tax, EPS, reserves move by the year's result |
+| Cash flow | `CFS-001`–`009` | arithmetic in both years, opening = prior closing, ties to the balance sheet and P&L |
+| Directors' Report | `DIRREP-001`–`011` | s.134 disclosures, Board meeting count and 120-day gaps, annual return, signatures |
+| Auditor's Report | `AUDREP-001`–`009` | opinion type, basis for opinion, s.143(3), CARO version, signature and UDIN |
+| AGM notice | `NOTICE-001`–`010` | six-month deadline, 21 clear days, hours, business, proxies, auditor appointment |
+| Invoice | `INV-001`–`008` | GST particulars, GSTIN check digit, PAN, totals, amount in words |
+| Two or more documents | `XDOC-001`–`017` | company, year-end, auditor, dates, profit/loss wording, summary figures, address, papers, invoice cut-off |
+
+Each finding is `PASS`, `FAIL` or `REVIEW`, with a severity, a confidence, and evidence: the quoted text or
+figures with their document and page. A `REVIEW` means a person should look; there may be an innocent
+explanation. Rules stay silent on documents they do not apply to.
+
+See [docs/RULES.md](docs/RULES.md) for every rule. That file is generated from the code
+(`python -m app.rule_docs`) and a test fails if it is stale.
+
+## API
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Liveness check |
+| `POST /api/v1/documents/process` | Extract, classify and normalise one document (multipart `file`) |
+| `POST /api/v1/documents/process-and-store` | The same, then store it and return findings |
+| `POST /api/v1/compliance/evaluate` | Run the per-document rules on facts and text |
+| `POST /api/v1/compliance/cross-check` | Compare two or more documents of one filing |
+| `POST /api/v1/compliance/report` | Build the PDF compliance report |
+| `POST /api/v1/regulations` | Embed and store a regulation passage |
+| `POST /api/v1/regulations/search` | Search stored regulation passages |
+
+Examples:
 
 ```bash
-git clone https://github.com/vivekpseudo/Satya-Lekha-Document-AI.git
-cd Satya-Lekha-Document-AI
+# per-document rules
+curl -X POST localhost:8000/api/v1/compliance/evaluate -H 'content-type: application/json' -d '{
+  "document_type": "balance_sheet",
+  "facts": [{"label": "Total assets", "value": "1000"},
+            {"label": "Total liabilities", "value": "400"},
+            {"label": "Total equity", "value": "600"}],
+  "retrieve_regulations": false
+}'
+
+# cross-document checks (two or more documents; "text" is the extracted text)
+curl -X POST localhost:8000/api/v1/compliance/cross-check -H 'content-type: application/json' -d '{
+  "documents": [
+    {"document_type": "directors_report", "document_name": "dr.pdf", "text": "..."},
+    {"document_type": "auditors_report",  "document_name": "ar.pdf", "text": "..."}
+  ]
+}'
+
+# load a regulation passage for evidence retrieval
+curl -X POST localhost:8000/api/v1/regulations -H 'content-type: application/json' -d '{
+  "regulation_id": "INDAS-1", "title": "Ind AS 1", "source_uri": "https://www.mca.gov.in",
+  "content": "A balance sheet shall present total assets equal to total equity plus liabilities."
+}'
 ```
 
-### 2. Configure production environment
+`process` accepts PDFs only in `local` mode; PNG, JPEG and TIFF need `EXTRACTOR=google`. `facts` are the
+extracted rows: each has a `label`, a `value`, and optionally `values` (every column, current year first),
+`source_page` and `bbox`. The response of `process-and-store` already contains them.
 
-Create the environment file:
+Evidence retrieval attaches the closest regulation passages to each finding. It is a search, not a determination
+of which regulation applies: deterministic rule metadata decides applicability.
+
+## Project layout
+
+```
+app/
+  main.py                 FastAPI routes
+  config.py               settings
+  local_extractor.py      PyMuPDF extraction (line-based rows, tables as fallback)
+  document_ai.py          Google Document AI client
+  normalizer.py           Document AI and Layout Parser output
+  classifier.py           document type classification
+  financial_normalizer.py amounts and row grouping
+  rules_engine.py         engine, applicability, balance-sheet and revenue rules
+  statement_rules.py      balance sheet, profit and loss, cross-statement rules
+  cash_flow_rules.py      cash flow rules
+  text_rules.py           Directors' Report and Auditor's Report rules
+  notice_invoice_rules.py AGM notice and invoice rules
+  cross_rules.py          cross-document checks
+  rule_docs.py            generates docs/RULES.md and the rule metadata files
+  regulatory_rag.py, embeddings.py   regulation storage and search (pgvector)
+  report.py               PDF compliance report
+  models.py, db.py, storage.py, schema.sql, init_db.py   persistence
+frontend/                 React + Vite + TypeScript + Ant Design + PDF.js
+docs/RULES.md             generated rule reference
+tests/                    pytest suite
+```
+
+## Web app
+
+- Upload a PDF. The document renders with PDF.js; evidence from a selected finding is highlighted on the page,
+  with numbered audit pins.
+- The right-hand panel lists the findings, filterable by severity. Selecting evidence jumps to its page.
+- **Print report** and **Export PDF report** produce the same PDF from `POST /api/v1/compliance/report`.
+- The control score is a summary of the findings (`PASS` 100%, `REVIEW` 50%, `FAIL` 0%), not an audit opinion.
+- Documents uploaded in a session are remembered until the page is reloaded, so they can be cross-checked.
+
+See [frontend/README.md](frontend/README.md).
+
+## Testing
 
 ```bash
-cp .env.example .env
-nano .env
+pytest -q                                   # backend
+cd frontend && npx tsc -b && npm run build  # frontend type check and build
+python -m app.rule_docs --check             # the rule reference is up to date
 ```
 
-Set production values for at least:
-
-```env
-GOOGLE_CLOUD_PROJECT=<google-cloud-project-id>
-DOCUMENT_AI_LOCATION=<processor-location>
-DOCUMENT_AI_PROCESSOR_ID=<document-ai-processor-id>
-
-POSTGRES_DB=satya_lekha
-POSTGRES_USER=satya
-POSTGRES_PASSWORD=<strong-random-password>
-
-WEB_PORT=8080
-```
-
-Do not commit `.env`.
-
-Generate a strong database password, for example:
-
-```bash
-openssl rand -base64 32
-```
-
-### 3. Configure Google Document AI credentials
-
-Create a production `secrets` directory outside version control:
-
-```bash
-mkdir -p secrets
-chmod 700 secrets
-```
-
-Copy the Google service-account JSON into:
-
-```
-secrets/google-service-account.json
-```
-
-Set restrictive permissions:
-
-```chmod 600 secrets/google-service-account.json```
-
-The service account should have only the Google Cloud permissions required by Document AI. Never put the JSON credentials in GitHub, `.env`, Docker images, or public object storage.
-
-### 4. Configure the reverse proxy
-
-Create DNS records pointing your domain/subdomains to the VPS.
-
-Recommended:
-
-```
-satya-lekha.example.com      -> VPS_PUBLIC_IP
-api.satya-lekha.example.com  -> VPS_PUBLIC_IP
-```
-
-In Nginx Proxy Manager create:
-
-**Frontend proxy host**
-
-- Domain: `satya-lekha.example.com`
-- Forward host: the Docker host IP
-- Forward port: `8080`
-- Enable WebSocket Support if required by the frontend
-- Issue a Let's Encrypt certificate
-- Force SSL
-
-**API proxy host**
-
-- Domain: `api.satya-lekha.example.com`
-- Forward host: the Docker host IP
-- Forward port: the published FastAPI port configured by `docker-compose.yml`
-- Enable WebSocket Support if required
-- Issue a Let's Encrypt certificate
-- Force SSL
-
-For a single-domain deployment, the frontend can also proxy `/api` to FastAPI internally. Do not expose PostgreSQL directly to the Internet.
-
-### 5. Configure the frontend API URL
-
-Before building the frontend, set the production API URL in the environment used by the frontend build.
-
-Example:
-
-```env
-VITE_API_BASE_URL=https://api.satya-lekha.example.com
-```
-
-For a same-origin reverse-proxy setup, use:
-
-```env
-VITE_API_BASE_URL=/api
-```
-
-Rebuild the frontend after changing any `VITE_*` variable because Vite injects these values at build time.
-
-### 6. Build and start the stack
-
-```bash
-docker compose pull
-docker compose build --no-cache
-docker compose up -d
-```
-
-Check container state:
-
-```bash
-docker compose ps
-```
-
-Inspect logs:
-
-```bash
-docker compose logs -f
-```
-
-Backend only:
-
-```bash
-docker compose logs -f backend
-```
-
-Frontend only:
-
-```bash
-docker compose logs -f frontend
-```
-
-### 7. Verify health
-
-From the server:
-
-```bash
-curl -f http://localhost:<backend-port>/health
-```
-
-Verify the web application through the HTTPS domain:
-
-```
-https://satya-lekha.example.com
-```
-
-Verify the API:
-
-```
-https://api.satya-lekha.example.com/docs
-```
-
-The exact backend health endpoint/port should match the current FastAPI application and `docker-compose.yml`.
-
-### 8. Initialize and verify the database
-
-For a fresh environment:
-
-```bash
-docker compose exec backend python -m pytest -q
-```
-
-Verify PostgreSQL:
-
-```bash
-docker compose exec postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-```
-
-For production, prefer Alembic migrations over manually applying `app/schema.sql` once migrations are introduced.
-
-### 9. Production validation checklist
-
-Run an end-to-end test with:
-
-1. A native-text annual report PDF.
-2. A scanned PDF requiring OCR.
-3. A Balance Sheet.
-4. A Cash Flow Statement.
-5. A Director's Report.
-6. A document containing a financial table spanning multiple pages.
-7. A regulatory evidence search.
-8. A compliance evaluation.
-9. A generated PDF compliance report.
-
-Confirm that every finding contains:
-
-```
-finding
-  -> rule_id
-  -> source document
-  -> page/evidence reference
-  -> extracted value
-  -> regulatory evidence
-  -> source URI
-  -> effective date
-  -> model/version metadata
-```
-
-### 10. Backups
-
-At minimum, back up:
-
-- PostgreSQL data
-- uploaded/raw documents
-- normalized document JSON
-- regulatory corpus
-- model/version metadata
-- audit logs
-
-The PostgreSQL volume used by Docker is persistent, but persistence is **not** the same as backup. Configure scheduled off-host backups and test restoration regularly.
-
-Example database dump:
-
-```bash
-docker compose exec -T postgres pg_dump \
-  -U "$POSTGRES_USER" \
-  -d "$POSTGRES_DB" \
-  > backup-$(date +%F).sql
-```
-
-Do not store production backups in the public Git repository.
-
-### 11. Updating the deployment
-
-Pull the new version and recreate the affected containers:
-
-```bash
-git pull origin main
-docker compose build
-docker compose up -d
-docker image prune -f
-```
-
-For schema changes, run the project's migration command before serving traffic.
-
-### 12. Security requirements before production use
-
-Do not treat the default Docker Compose stack as regulator-grade production by itself. Before processing sensitive financial records, add:
-
-- Authentication and RBAC
-- HTTPS-only external access
-- API rate limiting
-- strict CORS configuration
-- request-size limits
-- malware/file validation
-- secret management
-- encrypted backups
-- network isolation for PostgreSQL and internal services
-- centralized structured logging
-- audit-log integrity protection
-- dependency and container vulnerability scanning
-- tenant/data isolation where multi-tenant access is introduced
-- retention and deletion controls
-- disaster recovery procedures
-- versioned regulatory data with effective dates
-- human review workflow for high-risk findings
-
-### 13. Important architecture note
-
-The current repository is the **Document AI / financial normalization foundation** of Satya-Lekha. The full production architecture described in the project design additionally requires separate services or modules for:
-
-- Arelle/XBRL ingestion
-- regulatory corpus ingestion and versioning
-- deterministic compliance rules
-- RAG retrieval
-- anomaly detection
-- immutable audit trails
-- analyst review workflow
-- OSINT monitoring
-- local/open-source LLM inference
-
-These components should be added incrementally rather than coupled into the document-ingestion container.
-
-For the initial MVP, prioritize:
-
-```
-PDF/XBRL ingestion
-   ↓
-Balance Sheet extraction
-   ↓
-Cash Flow extraction
-   ↓
-Director's Report extraction
-   ↓
-Normalization
-   ↓
-XBRL ↔ PDF reconciliation
-   ↓
-Deterministic compliance checks
-   ↓
-Evidence-linked findings
-```
-
-This keeps the first production milestone measurable and preserves the source-traced design described in the project documentation. 
+CI runs the backend tests on every push. The suite includes tests that break one figure at a time to prove each
+rule can fail, and an end-to-end test that runs a generated PDF through extraction, classification and the rules.
+
+### Adding a rule
+
+1. Write the evaluator next to the related rules and add it to that module's rule list.
+2. Register its ID in [app/rule_registry.py](app/rule_registry.py) (per-document rules).
+3. Run `python -m app.rule_docs` to refresh [docs/RULES.md](docs/RULES.md).
+4. Add tests: one that passes, and one that fails for each way the rule can fail.
+
+## Deployment
+
+| Guide | For |
+|---|---|
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Docker Compose on a VPS behind Nginx Proxy Manager |
+| [customdeployment.md](customdeployment.md) | Build an image, push it to a private registry, run it elsewhere |
+
+The default image contains the API and the built web app; the API serves the UI.
+
+## Limitations
+
+- **No authentication.** Every endpoint is open. Do not expose the service to the Internet as it is; put it behind
+  a proxy with access control, and add authentication before handling real client records.
+- **The rules check consistency and presence, not correctness or adequacy.** A document can pass every rule and
+  still be wrong; a `REVIEW` can have an innocent explanation.
+- **Legal references are unverified.** The rules encode the authors' reading of the Companies Act, 2013, SS-2, the
+  Standards on Auditing, CARO, the CGST Rules and AS 3 / Ind AS 7. Have a qualified professional confirm them.
+- **Local extraction reads text-based PDFs only.** Scans and images need `EXTRACTOR=google`. Layouts that differ
+  a lot from Schedule III Division I, or cash flow statements using the direct method, may need rule changes.
+- **Tested on a small corpus** of one company's documents, plus synthetic cases. No real cash flow statement
+  has been tried.
+- **Regulatory evidence is generic.** Each finding gets the passages closest to a generic query, not text chosen
+  for that rule, and the regulation corpus must be loaded by you from authoritative sources.
+- Session memory for cross-checks lives in the browser; nothing links stored documents to each other.
+- Before wider use, add authentication, object storage for uploads, asynchronous processing, Alembic
+  migrations, audit logging, rate limits, and a labelled evaluation set.

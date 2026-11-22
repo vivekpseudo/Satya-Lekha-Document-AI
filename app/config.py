@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_dimensions: int = 384
     google_cloud_location: str = "global"
+    # Browser origins allowed to call the API (comma separated). Only needed when the
+    # frontend is served from a different origin, such as the Vite dev server.
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

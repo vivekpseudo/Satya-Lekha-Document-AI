@@ -27,13 +27,11 @@ app = FastAPI(
     description="Google Document AI ingestion, financial classification and normalization service.",
 )
 
-# Dev-server access (Vite on :5173). In production the frontend is served from
-# the same origin, so no extra origins are needed. Override with CORS_ORIGINS.
+# Dev-server access (Vite on :5173). In production the frontend is served from the
+# same origin, so no extra origins are needed. Configure with CORS_ORIGINS in .env.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in os.getenv(
-        "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
-    ).split(",") if o.strip()],
+    allow_origins=[o.strip() for o in get_settings().cors_origins.split(",") if o.strip()],
     allow_methods=["*"],
     allow_headers=["*"],
 )

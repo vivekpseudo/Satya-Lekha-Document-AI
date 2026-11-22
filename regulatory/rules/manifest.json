@@ -1,20 +1,867 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.2.0",
   "jurisdiction": "IN",
+  "generated_by": "python -m app.rule_docs",
   "rules": [
     {
       "rule_id": "INDAS-FS-001",
-      "regulators": ["MCA"],
-      "framework": "Ind AS",
-      "status": "prototype",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS"
+      ],
+      "status": "implemented",
       "source_status": "needs_authoritative_ingestion"
     },
     {
       "rule_id": "DATA-QUALITY-001",
       "regulators": [],
-      "framework": ["Ind AS", "Other"],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
       "status": "heuristic",
       "source_status": "non-regulatory"
+    },
+    {
+      "rule_id": "FSBS-001",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "FSBS-002",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "FSBS-003",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "FSBS-004",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "FSBS-005",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "FSBS-006",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "FSBS-007",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "FSPL-001",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "FSPL-002",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "FSPL-003",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "FSPL-004",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "FSPL-005",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "FSX-001",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "CFS-001",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "CFS-002",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "CFS-003",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "CFS-004",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "CFS-005",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "CFS-006",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "CFS-007",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "CFS-008",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "CFS-009",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "DIRREP-001",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "DIRREP-002",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "DIRREP-003",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "DIRREP-004",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "DIRREP-005",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "DIRREP-006",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "DIRREP-007",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "DIRREP-008",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "DIRREP-009",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "DIRREP-010",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "DIRREP-011",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "AUDREP-001",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "AUDREP-002",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "AUDREP-003",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "AUDREP-004",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "AUDREP-005",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "AUDREP-006",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "AUDREP-007",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "AUDREP-008",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "AUDREP-009",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "NOTICE-001",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "NOTICE-002",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "NOTICE-003",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "NOTICE-004",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "NOTICE-005",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "NOTICE-006",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "NOTICE-007",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "NOTICE-008",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "NOTICE-009",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "NOTICE-010",
+      "regulators": [
+        "MCA"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "INV-001",
+      "regulators": [
+        "CBIC"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "INV-002",
+      "regulators": [
+        "CBIC"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "INV-003",
+      "regulators": [
+        "CBIC"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "INV-004",
+      "regulators": [
+        "CBIC"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "INV-005",
+      "regulators": [
+        "CBIC"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "INV-006",
+      "regulators": [
+        "CBIC"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "INV-007",
+      "regulators": [
+        "CBIC"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "INV-008",
+      "regulators": [
+        "CBIC"
+      ],
+      "framework": [
+        "Ind AS",
+        "Other"
+      ],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-001",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-002",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-003",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-004",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-005",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-006",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-007",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-008",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-009",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-010",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-011",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-012",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-013",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-014",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-015",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-016",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
+    },
+    {
+      "rule_id": "XDOC-017",
+      "regulators": [],
+      "framework": [],
+      "status": "implemented",
+      "source_status": "needs_authoritative_ingestion"
     }
   ]
 }

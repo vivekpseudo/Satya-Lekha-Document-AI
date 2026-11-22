@@ -1,138 +1,156 @@
-# Custom Deployment Guide for Satya-Lekha Document AI
+# Custom deployment: build an image, push it, run it elsewhere
 
-This guide descibes the process to deploy the Satya-Lekha application using a single Docker image connected to an already running PostgreSQL container, and building/pushing to a private Docker registry.
+Use this when you build the image on one machine (or in CI), push it to a private registry, and run it on a
+server that already has a PostgreSQL container. For Docker Compose on a VPS behind Nginx Proxy Manager, see
+[DEPLOYMENT.md](DEPLOYMENT.md): it covers the database, the proxy, the upload limit and locking the service
+down, all of which apply here as well.
+
+One multi-stage image holds the API **and** the built web app. The API serves the UI, so there is a single port.
 
 ## Prerequisites
 
-1. **Docker and Docker Compose** installed on your build machine and deployment server.
-2. **Access to a Private Docker Registry** (e.g. `registry.example.com`, AWS ECR, GCP Artifact Registry).
-3. **Existing PostgreSQL Container** running on a known Docker network.
-4. **Google Cloud Credentials File** (e.g., `google-service-account.json`) for Document AI functionality.
+1. Docker on the build machine and on the server.
+2. A private Docker registry (for example `registry.example.com`, AWS ECR or GCP Artifact Registry).
+3. A PostgreSQL 16 container **with the pgvector extension** (`pgvector/pgvector:pg16`) on a known Docker network.
+4. Optional, only for Google Document AI: a service-account key (see [DEPLOYMENT.md](DEPLOYMENT.md)).
 
-## 1. Environment Configuration
+By default nothing is sent to Google: extraction and embeddings run inside the container.
 
-You must configure the `.env` file or environment variables on the deployment server:
-
-```env
-# Google Cloud configuration
-GOOGLE_CLOUD_PROJECT=your-project-id
-DOCUMENT_AI_LOCATION=us
-DOCUMENT_AI_PROCESSOR_ID=your-processor-id
-GOOGLE_CLOUD_LOCATION=global
-
-# Database configuration (connecting to the existing Postgres container)
-# Format: postgresql+psycopg://username:password@container_name:5432/database_name
-DATABASE_URL=postgresql+psycopg://satya:yourpassword@postgres_external_container_name:5432/satya_lekha
-POSTGRES_NETWORK=name_of_your_existing_postgres_network
-
-# File settings
-MAX_UPLOAD_MB=20
-
-# Embedding settings
-EMBEDDING_MODEL=gemini-embedding-001
-EMBEDDING_DIMENSIONS=768
-```
-
-## 2. Authenticating with your Private Docker Registry
-
-Before building and pushing the image, authenticate with your private registry:
+## 1. Build and push
 
 ```bash
-docker login registry.example.com
-```
-*You will be prompted for your username and password/token. Do not use hard-coded passwords in scripts.*
+docker login registry.example.com        # use a token; never put a password in a script
 
-## 3. Building and Tagging the Image
+docker build -t registry.example.com/satya-lekha-app:1.0.0 .
+docker tag  registry.example.com/satya-lekha-app:1.0.0 registry.example.com/satya-lekha-app:latest
 
-The codebase now utilizes a **multi-stage Dockerfile** which compiles the Vite/React frontend and the Python/FastAPI backend into a single unified image. 
-
-Build the image locally and tag it with your registry URL:
-
-```bash
-docker build -t registry.example.com/satya-lekha-app:latest .
-```
-
-*(Alternatively, you can tag an existing local image via: `docker tag satya-lekha-app registry.example.com/satya-lekha-app:latest`)*
-
-## 4. Pushing the Image to the Registry
-
-Once built and tagged correctly, push the image to your private registry:
-
-```bash
+docker push registry.example.com/satya-lekha-app:1.0.0
 docker push registry.example.com/satya-lekha-app:latest
 ```
 
-## 5. Deployment Server Execution
+Deploy a version tag rather than `latest`, so you can roll back.
 
-On your deployment server:
+Build notes:
 
-### A. Network and Dependencies Verification
-Ensure your existing PostgreSQL database is running. Determine its Docker network name using:
-```bash
-docker network ls
+- The image is about 1 GB. It includes the local embedding model (`BAAI/bge-small-en-v1.5`, about 130 MB),
+  downloaded **at build time**, so the build needs internet access but the running container does not.
+- Another model: `docker build --build-arg EMBEDDING_MODEL=<model> .`, with a matching `EMBEDDING_DIMENSIONS`.
+- If you only ever use `EMBEDDER=google`, delete the `fastembed` step in the `Dockerfile` to save the download.
+- `VITE_API_BASE_URL` defaults to `/api`, which suits the single-image layout. Rebuild after changing it.
+
+## 2. Configure the server
+
+Create an env file on the server (do not commit it):
+
+```env
+EXTRACTOR=local
+EMBEDDER=local
+EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
+EMBEDDING_DIMENSIONS=384
+MAX_UPLOAD_MB=20
+
+# the host is the database container's name on the network the app joins
+DATABASE_URL=postgresql+psycopg://satya:<password>@<postgres-container-name>:5432/satya_lekha
+
+# docker compose only: the existing networks to join
+POSTGRES_NETWORK=<name-of-the-postgres-network>
+PROXY_NETWORK=proxy
 ```
-*(Configure the `POSTGRES_NETWORK` environment variable in your `.env` file to match this exact network name).*
 
-### B. Pull the Docker Image
-Authenticate logic applies here as well, if required:
+For Google Document AI also set `EXTRACTOR=google`, `GOOGLE_CLOUD_PROJECT`, `DOCUMENT_AI_LOCATION`,
+`DOCUMENT_AI_PROCESSOR_ID`, and mount the key (see below). Find the database network with `docker network ls`.
+
+## 3. Create the tables
+
+The image's default command starts the API only, so create the tables once, and again after upgrades:
+
 ```bash
-docker login registry.example.com
-docker pull registry.example.com/satya-lekha-app:latest
+docker run --rm --network <postgres-network> --env-file .env \
+  registry.example.com/satya-lekha-app:1.0.0 python -m app.init_db
 ```
 
-### C. Run the Application
-You can run the application utilizing `docker-compose` if you modified the image tag in `docker-compose.yml`, or bypass it entirely using raw Docker commands connecting to the database network:
+(`docker compose up` does this for you, because `docker-compose.yml` runs `app.init_db` before starting the API.)
 
-**Method 1. Using Docker Compose (Preferred):**
-Ensure your `docker-compose.yml` specifies the correct image:
+## 4. Run
+
+**With Docker Compose.** Point the service at your image by adding a `docker-compose.override.yml` next to
+`docker-compose.yml`:
+
 ```yaml
 services:
   app:
-    image: registry.example.com/satya-lekha-app:latest
-    # ... remaining configuration
-```
-Then run:
-```bash
-docker-compose up -d
+    image: registry.example.com/satya-lekha-app:1.0.0
 ```
 
-**Method 2. Using Docker Run (Standalone):**
 ```bash
-docker run -d \
-  --name satya-lekha-app \
-  --network name_of_your_existing_postgres_network \
-  -p 8000:8000 \
+docker compose pull
+docker compose up -d
+```
+
+**With `docker run`:**
+
+```bash
+docker run -d --name satya-lekha-app --restart unless-stopped \
+  --network <postgres-network> \
+  -p 127.0.0.1:8000:8000 \
   --env-file .env \
-  -v $(pwd)/secrets/google-service-account.json:/run/secrets/google_credentials:ro \
-  registry.example.com/satya-lekha-app:latest
+  registry.example.com/satya-lekha-app:1.0.0
 ```
-*Note: Make sure your `DATABASE_URL` accurately references the PostgreSQL DB container's reachable hostname within that network.*
 
-## 6. Reverse Proxy Setup
+`-p 127.0.0.1:8000:8000` keeps the port off the public interface: put a reverse proxy in front. For Google
+Document AI add:
 
-Because the application serves both frontend static assets and backend `/api/...` routes from a single 8000 port, setting up a reverse proxy (like NGINX, Traefik, or Cloudflare Tunnels) is straight-forward.
+```bash
+  -e GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/google_credentials \
+  -v "$(pwd)/secrets/google-service-account.json:/run/secrets/google_credentials:ro" \
+```
 
-### NGINX Example `nginx.conf`:
+Check it:
+
+```bash
+curl -f http://localhost:8000/health        # {"status":"ok"}
+```
+
+## 5. Reverse proxy
+
+The application listens on one port, so any proxy works. There is no login on the service, so restrict access at
+the proxy (an IP allow-list, basic authentication, or a tunnel with an access policy).
+
 ```nginx
 server {
     listen 80;
-    server_name satyalekha.yourdomain.com;
+    server_name satyalekha.example.com;
+
+    client_max_body_size 25m;            # a little above MAX_UPLOAD_MB; the default 1m rejects PDFs
 
     location / {
-        proxy_pass http://localhost:8000;
+        proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
     }
 }
 ```
 
-## 7. Troubleshooting
+Add TLS (for example with Certbot) before real use.
 
-- **Container fails to start (Connection Refused DB):**
-  Check that `DATABASE_URL` resolves to the correct internal Docker domain, and ensure your new app container is running on the *exact same Docker network* as PostgreSQL.
-- **Frontend loads as a blank screen or 404:**
-  Ensure the multi-stage build succeeded without failures. Connect to the container (`docker exec -it <container_id> /bin/sh`) and verify the presence of HTML and assets within `/app/static`.
-- **API routes returning 404:**
-  API calls expect `/api/...` prefixes. Make sure you don't override FastAPI's route definitions. 
+## 6. Updating
+
+Build and push a new tag, change the tag on the server, then repeat steps 3 and 4. Take a database backup first
+(see [DEPLOYMENT.md](DEPLOYMENT.md#operations)). There are no migrations: `app.init_db` creates what is missing but
+does not alter existing tables.
+
+## Troubleshooting
+
+- **Container exits or restarts with a connection error.** `DATABASE_URL` must use the database container's name,
+  and the app must be on the same Docker network as the database.
+- **Errors about `vector` or an `embedding` column.** The database lacks pgvector, or `EMBEDDING_DIMENSIONS`
+  differs from the existing column. See [DEPLOYMENT.md](DEPLOYMENT.md#troubleshooting).
+- **Blank page or 404 on `/`.** The web app was not built into the image. Check that the build finished, then look
+  for `index.html` with `docker exec <container> ls /app/static`.
+- **`/api/...` returns 404.** A proxy rule is rewriting paths. Forward `/` to the container unchanged.
+- **`413` on upload.** The proxy's body limit: set `client_max_body_size`.
+- **Local extraction rejects a scan or image.** Use `EXTRACTOR=google`.
