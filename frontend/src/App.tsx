@@ -1,5 +1,5 @@
 import { Spin } from "antd";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import AuthPage from "./AuthPage";
 import { AuthProvider, useAuth } from "./auth";
 import History from "./History";
@@ -12,8 +12,10 @@ import Workspace from "./Workspace";
 /** Signed-in pages: anyone else is sent to sign in first. */
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, ready } = useAuth();
+  // Remember the page that was asked for; by the time the redirect effect re-runs, the URL is already /login.
+  const requested = useRef(usePath());
   useEffect(() => {
-    if (ready && !user) navigate(`/login?next=${encodeURIComponent(window.location.pathname)}`, true);
+    if (ready && !user) navigate(`/login?next=${encodeURIComponent(requested.current)}`, true);
   }, [ready, user]);
   if (!ready || !user) return <div className="page-loading"><Spin size="large" /></div>;
   return <>{children}</>;

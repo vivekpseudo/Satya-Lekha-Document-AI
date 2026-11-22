@@ -21,6 +21,8 @@ export function usePath(): string {
     const update = () => setPath(window.location.pathname);
     listeners.add(update);
     window.addEventListener("popstate", update);
+    // A child's effect can navigate before this listener existed (children's effects run first); catch up.
+    update();
     return () => {
       listeners.delete(update);
       window.removeEventListener("popstate", update);
