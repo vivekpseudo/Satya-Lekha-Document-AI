@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
+from app.accounts_api import router as accounts_router
 from app.classifier import classify_document
 from app.config import get_settings
 from app.extraction import UnsupportedDocumentError, allowed_mime_types, extract_document
@@ -35,6 +36,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.include_router(accounts_router)
 
 
 @app.get("/health")
