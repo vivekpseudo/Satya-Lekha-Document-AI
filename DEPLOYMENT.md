@@ -33,14 +33,17 @@ The single `app` container serves the API (`/api/...`, `/docs`, `/health`) and t
 hostname and no CORS setup. By default nothing is sent to Google: extraction and embeddings run inside the
 container.
 
-> **There is no authentication.** Every endpoint is open, including regulation ingestion. Read
-> [Lock it down](#lock-it-down) before the service is reachable from the Internet.
+> **Accounts protect only the history pages.** Sign-in and per-user report history use a login, but the
+> document-processing, compliance and regulation endpoints do not: anyone who can reach the service can use them.
+> Set a strong `AUTH_SECRET` (the compose file requires it) and read [Lock it down](#lock-it-down) before the
+> service is reachable from the Internet.
 
 ## 1. Build and push the image (your machine)
 
 ```bash
 cp .env.example .env            # set APP_IMAGE, for example registry.example.com/satya-lekha-app:1.0.0
 docker login registry.example.com
+export AUTH_SECRET=unused-at-build-time   # compose validates the whole file; the value is not stored in the image
 docker compose -f docker-compose.yml -f docker-compose.build.yml build
 docker compose -f docker-compose.yml -f docker-compose.build.yml push
 ```
@@ -138,6 +141,9 @@ APP_IMAGE=registry.example.com/satya-lekha-app:1.0.0
 DATABASE_URL=postgresql+psycopg://satya:<password>@<postgres-container>:5432/satya_lekha
 POSTGRES_NETWORK=<the database's network>
 PROXY_NETWORK=proxy
+
+# signs login tokens: generate once with   openssl rand -hex 32
+AUTH_SECRET=<64 random hex characters>
 ```
 
 - A password containing `@`, `/`, `:` or `#` must be URL-encoded in `DATABASE_URL`.
@@ -147,6 +153,9 @@ PROXY_NETWORK=proxy
   `EMBEDDING_DIMENSIONS=384`, `MAX_UPLOAD_MB=20`); see `.env.example` for the full list.
 - `APP_PORT_BIND` sets where the API is published on the host. It defaults to `127.0.0.1:8000`; use
   `127.0.0.1:18000` if something else (another application's backend, say) already uses 8000.
+- **`AUTH_SECRET` is required.** `docker compose` refuses to start without it, so the container can never run on
+  the app's public built-in default (with which anyone could forge a login). Keep it secret and stable: changing
+  it signs every user out.
 - Never commit `.env`, and keep it readable only by you: `chmod 600 .env`.
 
 ### Optional: Google Document AI
@@ -233,8 +242,8 @@ The first value should be a little above `MAX_UPLOAD_MB`. The timeouts allow for
 - The API is published on `127.0.0.1` by default, so it is not reachable on the server's public address. Check from
   another machine: `curl -m 5 http://<server-public-ip>:8000/health` should fail. Only change `APP_PORT_BIND` to
   `0.0.0.0:…` if you really need a public port.
-- The service has no login, so restrict who can reach the domain. In NPM, create an **Access List** (basic
-  authentication and/or an IP allow-list) and attach it to the proxy host.
+- Only the history pages are behind a login, so restrict who can reach the domain. In NPM, create an
+  **Access List** (basic authentication and/or an IP allow-list) and attach it to the proxy host.
 - Do not publish PostgreSQL.
 
 ## Operations
@@ -264,8 +273,9 @@ docker exec <postgres-container> pg_dump -U <superuser> -d satya_lekha | gzip > 
 gunzip -c satya_lekha_2026-01-01.sql.gz | docker exec -i <postgres-container> psql -U <superuser> -d satya_lekha
 ```
 
-What is stored: each processed document (its text and normalised JSON), the extracted facts, and the regulation
-passages you loaded. Uploaded PDFs themselves are not kept.
+What is stored: each processed document (its text and normalised JSON), the extracted facts, the regulation
+passages you loaded, and user accounts (password hashes, not passwords) with their saved reports. Uploaded PDFs
+themselves are not kept.
 
 **Load regulations** for evidence retrieval with `POST /api/v1/regulations` (see the README). Source them from
 authoritative publications and keep their URIs and effective dates.
@@ -281,6 +291,8 @@ authoritative publications and keep their URIs and effective dates.
 | `port is already allocated` | Something else uses the host port. Set `APP_PORT_BIND=127.0.0.1:18000`. |
 | Container restarts; the log shows a connection error | The host in `DATABASE_URL` is wrong, or the database is not on `POSTGRES_NETWORK`. Use the database container's name. |
 | `password authentication failed` | `DATABASE_URL` has the wrong password, or the password is not URL-encoded. |
+| `required variable AUTH_SECRET is missing a value` | Add `AUTH_SECRET` to the server's `.env` (`openssl rand -hex 32`). On the build machine, `export AUTH_SECRET=unused-at-build-time` before `docker compose … build`. |
+| Everyone is signed out after a redeploy | `AUTH_SECRET` changed. Keep the same value across deployments. |
 | `extension "vector" is not available` / `permission denied to create extension` | No pgvector in that PostgreSQL, or `satya` is not a superuser: create the extension as the superuser (step 3). |
 | `413 Request Entity Too Large` on upload | The proxy's body limit: add `client_max_body_size` (step 6). |
 | Upload hangs, then `504` / `502` | Raise `proxy_read_timeout` (step 6); check `docker compose logs app`. |

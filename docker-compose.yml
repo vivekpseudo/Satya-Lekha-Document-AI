@@ -23,6 +23,8 @@ services:
       EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-384}
       GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      # Signs login tokens. Required: with the app's built-in default anyone could forge a token.
+      AUTH_SECRET: "${AUTH_SECRET:?Set AUTH_SECRET in .env, for example with openssl rand -hex 32}"
     ports:
       # Loopback by default: a reverse proxy on the same host (or on the "proxy" network) is the way in.
       # Set APP_PORT_BIND=0.0.0.0:8000 only if the port must be public, or 127.0.0.1:18000 if 8000 is taken.

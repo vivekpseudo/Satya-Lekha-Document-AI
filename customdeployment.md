@@ -28,6 +28,7 @@ The compose files read it, so the same name is used to build, push and deploy.
 ```bash
 docker login registry.example.com        # use a token; never put a password in a script
 
+export AUTH_SECRET=unused-at-build-time  # compose validates the whole file, even to build; not stored in the image
 docker compose -f docker-compose.yml -f docker-compose.build.yml build
 docker compose -f docker-compose.yml -f docker-compose.build.yml push
 ```
@@ -73,7 +74,9 @@ You should see the web app's `index.html` and `assets`, and the cached embedding
 
 ## Running the image without compose
 
-Compose is the recommended route. If you cannot use it, create the tables once (and again after upgrades), because
+Compose is the recommended route. If you cannot use it, put a real `AUTH_SECRET` (`openssl rand -hex 32`) in the
+env file: unlike compose, `docker run` will not stop you from starting on the app's public built-in default, with
+which anyone could forge a login. Then create the tables once (and again after upgrades), because
 the image's default command starts only the API:
 
 ```bash
@@ -97,6 +100,8 @@ limit). To use Google Document AI, add
   PyPI and Hugging Face. Retry; behind a proxy, configure Docker's build proxy settings.
 - **`required variable APP_IMAGE is missing a value`.** Set `APP_IMAGE` in `.env` or the environment before running
   compose.
+- **`required variable AUTH_SECRET is missing a value`.** Compose validates the whole file even to build. Set
+  `AUTH_SECRET` (any value when building; a real one on the server, see [DEPLOYMENT.md](DEPLOYMENT.md)).
 - **`denied` or `unauthorized` on push.** `docker login` to the registry, and check you may push to that repository.
 - **Blank page or 404 on `/` after deploying.** The image has no web app. Rebuild with `--no-cache` and push again.
 - **`/api/...` returns 404 behind a proxy.** A proxy rule is rewriting paths. Forward `/` to the container unchanged.

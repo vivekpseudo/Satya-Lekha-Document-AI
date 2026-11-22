@@ -87,7 +87,7 @@ Settings come from environment variables or `.env` (see [.env.example](.env.exam
 | `EMBEDDING_DIMENSIONS` | `384` | Must match the model. Use `768` with `gemini-embedding-001` |
 | `DATABASE_URL` | local PostgreSQL | `postgresql+psycopg://user:password@host:5432/db` |
 | `MAX_UPLOAD_MB` | `20` | Upload size limit |
-| `AUTH_SECRET` | `change-me-in-production` | Signs login tokens. **Set a long random value** (`openssl rand -hex 32`) in any real deployment |
+| `AUTH_SECRET` | built-in default (local only) | Signs login tokens. **Required for Docker**: compose refuses to start without it. Use `openssl rand -hex 32` |
 | `CORS_ORIGINS` | the Vite dev origins | Comma-separated origins allowed to call the API. Not needed when the UI is served by the API itself |
 | `GOOGLE_CLOUD_PROJECT`, `DOCUMENT_AI_LOCATION`, `DOCUMENT_AI_PROCESSOR_ID`, `GOOGLE_CLOUD_LOCATION` | empty | Only for `google` mode |
 | `FASTEMBED_CACHE_PATH` | system temp dir | Where the local embedding model is cached |
@@ -268,8 +268,10 @@ compose file: it must already exist on a Docker network that the app can join.
 
 ## Limitations
 
-- **No authentication.** Every endpoint is open. Do not expose the service to the Internet as it is; put it behind
-  a proxy with access control, and add authentication before handling real client records.
+- **Accounts protect only the history pages.** Sign-in, per-user report history and the pages built on them are behind
+  a login, but the document-processing, compliance and regulation endpoints are not: anyone who can reach the
+  service can use them, including loading regulations. Do not expose it to the Internet as it is; put it behind a
+  proxy with access control, and set a strong `AUTH_SECRET` (anyone who knows the secret can forge a login).
 - **The rules check consistency and presence, not correctness or adequacy.** A document can pass every rule and
   still be wrong; a `REVIEW` can have an innocent explanation.
 - **Legal references are unverified.** The rules encode the authors' reading of the Companies Act, 2013, SS-2, the
