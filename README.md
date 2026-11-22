@@ -91,6 +91,7 @@ Settings come from environment variables or `.env` (see [.env.example](.env.exam
 | `GOOGLE_CLOUD_PROJECT`, `DOCUMENT_AI_LOCATION`, `DOCUMENT_AI_PROCESSOR_ID`, `GOOGLE_CLOUD_LOCATION` | empty | Only for `google` mode |
 | `FASTEMBED_CACHE_PATH` | system temp dir | Where the local embedding model is cached |
 | `SATYA_LEKHA_LOGO_PATH` | none | Optional logo for the PDF report |
+| `APP_IMAGE`, `APP_PORT_BIND`, `POSTGRES_NETWORK`, `PROXY_NETWORK` | see `.env.example` | Docker Compose only: the image to run, where to publish the port, and the existing networks to join |
 
 **Changing the embedding model or dimensions** means the existing `regulation_chunks` vectors no longer fit: drop
 that table, run `python -m app.init_db`, and ingest the regulations again. Vectors from different models cannot
@@ -236,12 +237,27 @@ rule can fail, and an end-to-end test that runs a generated PDF through extracti
 
 ## Deployment
 
-| Guide | For |
-|---|---|
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Docker Compose on a VPS behind Nginx Proxy Manager |
-| [customdeployment.md](customdeployment.md) | Build an image, push it to a private registry, run it elsewhere |
+Build the image on your machine, push it to your registry, and run it on the server with `docker compose` using the
+image from the registry and a `.env` file. The server needs only `docker-compose.yml` and `.env`: no source code,
+no build.
 
-The default image contains the API and the built web app; the API serves the UI.
+```bash
+# your machine: set APP_IMAGE in .env (for example registry.example.com/satya-lekha-app:1.0.0), then
+docker compose -f docker-compose.yml -f docker-compose.build.yml build
+docker compose -f docker-compose.yml -f docker-compose.build.yml push
+
+# the server: docker-compose.yml and .env in one directory
+docker compose pull
+docker compose up -d
+```
+
+| Guide | Covers |
+|---|---|
+| [customdeployment.md](customdeployment.md) | building and pushing the image, versions, CPU architecture |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | the server: networks, PostgreSQL (including sharing an existing server), `.env`, the reverse proxy, backups, updates and rollback, troubleshooting |
+
+The default image contains the API and the built web app; the API serves the UI. PostgreSQL is not started by the
+compose file: it must already exist on a Docker network that the app can join.
 
 ## Limitations
 

@@ -1,0 +1,14 @@
+# Build override: used only on the machine that builds the image, never on the server.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml build
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml push
+#
+# The image is tagged with APP_IMAGE from .env (or the environment), so set that first.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # A VPS is normally linux/amd64. Building on an Apple Silicon Mac without this would produce an
+    # arm64 image that fails to start on the server. Override with APP_PLATFORM if the server differs.
+    platform: ${APP_PLATFORM:-linux/amd64}
