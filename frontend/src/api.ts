@@ -1,6 +1,10 @@
 import type { Finding, ProcessedDocument, ReportDetail, ReportSummary, Session, User } from "./types";
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+// Every path below already starts with /api/v1, so the base must not end in /api. "", "/" and the older
+// "/api" all mean "this same origin" (the Docker image, where the API serves the UI); a full URL points at
+// an API on another host, e.g. http://localhost:8000 in development.
+const configuredBase: string = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE = configuredBase.replace(/\/+$/, "").replace(/\/api$/, "");
 
 const TOKEN_KEY = "satya-lekha-token";
 

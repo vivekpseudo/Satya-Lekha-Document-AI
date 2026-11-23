@@ -67,8 +67,10 @@ You should see the web app's `index.html` and `assets`, and the cached embedding
 - **A different embedding model.** `docker compose -f docker-compose.yml -f docker-compose.build.yml build
   --build-arg EMBEDDING_MODEL=<model>`, and set a matching `EMBEDDING_DIMENSIONS` on the server. If you only ever
   use `EMBEDDER=google`, delete the `fastembed` step in the `Dockerfile` to skip the download.
-- **API address.** The web app is built with `VITE_API_BASE_URL=/api`, which suits the single-image layout. Pass
-  `--build-arg VITE_API_BASE_URL=...` only if the UI and API are on different hosts.
+- **API address.** The web app is built with `VITE_API_BASE_URL=/`, meaning "the same host that served the page":
+  the API serves the UI, so calls go to `/api/v1/...` on that host. Pass `--build-arg VITE_API_BASE_URL=...` only if
+  the UI and API are on different hosts, and give a full URL **without** `/api` on the end (the app adds
+  `/api/v1/...` itself). A value ending in `/api` is stripped, but it is never what you want.
 - **Nothing secret goes into the image.** Passwords, the database URL and any Google key are supplied at run time
   through `.env` and mounts. Keep it that way.
 

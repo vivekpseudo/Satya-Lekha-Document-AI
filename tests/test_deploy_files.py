@@ -38,3 +38,17 @@ def test_an_empty_auth_secret_is_refused_at_startup(monkeypatch):
     monkeypatch.setenv("AUTH_SECRET", "")
     with pytest.raises(ValidationError):
         Settings(_env_file=None)
+
+
+def test_the_image_does_not_bake_in_an_api_prefix_that_doubles_the_path():
+    # The frontend's request paths already start with /api/v1. A build default ending in /api sent logins to
+    # /api/api/v1/auth/login, which the server does not have.
+    dockerfile = (ROOT / "Dockerfile").read_text()
+    default = re.search(r"^ARG VITE_API_BASE_URL=(.*)$", dockerfile, re.M).group(1).strip()
+    assert not re.search(r"/api/?$", default), f"VITE_API_BASE_URL default {default!r} would double the /api prefix"
+
+
+def test_every_frontend_request_path_starts_with_api_v1():
+    api = (ROOT / "frontend" / "src" / "api.ts").read_text()
+    paths = re.findall(r"\$\{API_BASE\}(/[^`\"']*)", api)
+    assert paths and all(p.startswith("/api/v1/") for p in paths), paths

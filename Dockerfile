@@ -4,7 +4,8 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
-ARG VITE_API_BASE_URL=/api
+# "/" = the same origin: the API serves the UI, so calls go to /api/v1/... on whatever host serves the page.
+ARG VITE_API_BASE_URL=/
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 

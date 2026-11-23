@@ -23,12 +23,14 @@ Node 20.19+ or 22.12+ is required (a Vite requirement).
 
 ## Where it finds the API
 
-`VITE_API_BASE_URL` sets the backend URL at **build time**:
+`VITE_API_BASE_URL` sets the backend URL at **build time**. Give the host only, with no `/api` on the end: every
+request path the app uses already starts with `/api/v1`, so a base ending in `/api` would send requests to
+`/api/api/v1/...`, which do not exist.
 
 | Setup | Value |
 |---|---|
 | `npm run dev` (default) | `http://localhost:8000` |
-| Served by the API itself, as in the Docker image | `/api`, set by the `Dockerfile` |
+| Served by the API itself, as in the Docker image | `/` (the same origin), set by the `Dockerfile` |
 | UI and API on different hosts | the API's public URL |
 
 In development the browser calls the API directly from `localhost:5173`, so that origin must be allowed by the
