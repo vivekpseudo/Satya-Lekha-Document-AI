@@ -12,6 +12,16 @@ audit report? Is the statutory auditor billing the company for work s.144 restri
 > each other, not that they are right. The legal references come from the authors' reading of the law and have
 > **not** been reviewed by a qualified professional. See [Limitations](#limitations).
 
+## Live app
+
+**<https://satya-lekha.pseudoclan.com/>**
+
+Create an account, upload a PDF from an annual filing, and read the findings. Upload several documents of the same
+filing (statements, Directors' Report, Auditor's Report, notice, invoice) in one session to get the
+cross-document checks. The app works on phones, tablets and desktops.
+
+Read [What is stored](#what-is-stored) before uploading real documents.
+
 ## What it does
 
 ```
@@ -55,7 +65,8 @@ npm install
 npm run dev                                           # UI on http://localhost:5173
 ```
 
-API docs: <http://localhost:8000/docs>. Health check: `curl localhost:8000/health`.
+API docs: <http://localhost:8000/docs>. Health check: `curl localhost:8000/health`. In the web app, create an
+account first (**Create account**): the upload page needs a signed-in user.
 
 The first time regulation text is embedded, the local embedding model (about 130 MB) is downloaded from Hugging Face.
 
@@ -92,7 +103,7 @@ Settings come from environment variables or `.env` (see [.env.example](.env.exam
 | `GOOGLE_CLOUD_PROJECT`, `DOCUMENT_AI_LOCATION`, `DOCUMENT_AI_PROCESSOR_ID`, `GOOGLE_CLOUD_LOCATION` | empty | Only for `google` mode |
 | `FASTEMBED_CACHE_PATH` | system temp dir | Where the local embedding model is cached |
 | `SATYA_LEKHA_LOGO_PATH` | none | Optional logo for the PDF report |
-| `APP_IMAGE`, `APP_PORT_BIND`, `POSTGRES_NETWORK`, `PROXY_NETWORK` | see `.env.example` | Docker Compose only: the image to run, where to publish the port, and the existing networks to join |
+| `APP_IMAGE`, `APP_PORT_BIND`, `POSTGRES_NETWORK`, `PROXY_NETWORK`, `APP_PLATFORM` | see `.env.example` | Docker Compose only: the image to run, where to publish the port, the existing networks to join, and (when building) the server's CPU architecture |
 
 **Changing the embedding model or dimensions** means the existing `regulation_chunks` vectors no longer fit: drop
 that table, run `python -m app.init_db`, and ingest the regulations again. Vectors from different models cannot
@@ -199,30 +210,46 @@ app/
   notice_invoice_rules.py AGM notice and invoice rules
   cross_rules.py          cross-document checks
   rule_docs.py            generates docs/RULES.md and the rule metadata files
+  accounts_api.py, auth.py  accounts, sign-in (scrypt hashes, signed tokens) and saved reports
   regulatory_rag.py, embeddings.py   regulation storage and search (pgvector)
   report.py               PDF compliance report
   models.py, db.py, storage.py, schema.sql, init_db.py   persistence
-frontend/                 React + Vite + TypeScript + Ant Design + PDF.js
+frontend/                 React + Vite + TypeScript + Ant Design + PDF.js (home, sign in, upload, History)
 docs/RULES.md             generated rule reference
 tests/                    pytest suite
 ```
 
 ## Web app
 
-- Pages: a **home** page explaining the features, **register** and **sign in** (full name, organization name, email,
-  password, and a required tick for the [Terms & Conditions](frontend/src/Terms.tsx) page), the upload page, and
-  **History**. History is a grid of the signed-in user's past reports (document name and date); *Open report* shows the
-  report in a dialog. Only the finished report is stored, never the uploaded file.
-- Accounts and history use `POST /api/v1/auth/register`, `/auth/login`, `GET /auth/me` and `/api/v1/reports`. The
-  tables are created by `python -m app.init_db`. The document-processing endpoints themselves are not behind a login.
-- Upload a PDF. The document renders with PDF.js; evidence from a selected finding is highlighted on the page,
-  with numbered audit pins.
-- The right-hand panel lists the findings. Selecting evidence jumps to its page.
+- **Pages:** a home page, **create account** and **sign in** (full name, organization, email, password, and a required
+  tick for the [Terms & Conditions](frontend/src/Terms.tsx)), the upload page, and **History**, the signed-in user's
+  past reports. *Open report* shows a report in a dialog; **Export PDF** downloads it.
+- **Upload** a PDF. The document renders with PDF.js; the evidence of a selected finding is highlighted on the page,
+  with numbered audit pins, and selecting evidence jumps to its page.
+- **Findings** are listed with their status, severity, confidence and evidence.
 - **Print report** and **Export PDF report** produce the same PDF from `POST /api/v1/compliance/report`.
-- The control score is a summary of the findings (`PASS` 100%, `REVIEW` 50%, `FAIL` 0%), not an audit opinion.
+- The **control score** summarises the findings (`PASS` 100%, `REVIEW` 50%, `FAIL` 0%). It is not an audit opinion.
 - Documents uploaded in a session are remembered until the page is reloaded, so they can be cross-checked.
+- **Responsive:** the layout adapts from 320px phones to desktop. On small screens the header folds into a menu,
+  History shows cards instead of a table, and the report dialog fits the screen.
+
+Accounts and history use `POST /api/v1/auth/register`, `/auth/login`, `GET /auth/me` and `/api/v1/reports`. The
+tables are created by `python -m app.init_db`. The document-processing, compliance and regulation endpoints are not
+behind a login.
 
 See [frontend/README.md](frontend/README.md).
+
+### What is stored
+
+- **The uploaded file itself is never kept.**
+- **Extracted text and figures are.** The web app uploads through `POST /api/v1/documents/process-and-store`, which
+  saves each document's full extracted text, tables and figures to the database. Those rows are **not linked to any
+  account**, and there is no way yet to delete them.
+- **Your reports.** The finished report (document name, date, classification and findings) is saved to your History,
+  linked to your account.
+- **Accounts** hold a name, organization, email address and a password hash (scrypt), never the password.
+
+Treat the database and its backups as holding the content of every document that was uploaded.
 
 ## Testing
 
@@ -250,6 +277,7 @@ no build.
 
 ```bash
 # your machine: set APP_IMAGE in .env (for example registry.example.com/satya-lekha-app:1.0.0), then
+export AUTH_SECRET=unused-at-build-time        # compose validates the whole file, even to build
 docker compose -f docker-compose.yml -f docker-compose.build.yml build
 docker compose -f docker-compose.yml -f docker-compose.build.yml push
 
@@ -258,13 +286,27 @@ docker compose pull
 docker compose up -d
 ```
 
+The server's `.env` needs `APP_IMAGE`, `DATABASE_URL`, `POSTGRES_NETWORK`, `PROXY_NETWORK` and **`AUTH_SECRET`**
+(`openssl rand -hex 32`). `docker compose` refuses to start without `AUTH_SECRET`, so a container can never run on
+the built-in default.
+
+```
+Internet ──► reverse proxy (TLS) ──► app :8000  (UI + API in one container)
+                                      │
+                              private network
+                                      │
+                                  PostgreSQL + pgvector
+```
+
+PostgreSQL is not started by the compose file: it must already exist. Give the app its own network to the database
+(for example `satya-db`) rather than joining the network of other applications. The guides explain how.
+
 | Guide | Covers |
 |---|---|
 | [customdeployment.md](customdeployment.md) | building and pushing the image, versions, CPU architecture |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | the server: networks, PostgreSQL (including sharing an existing server), `.env`, the reverse proxy, backups, updates and rollback, troubleshooting |
 
-The default image contains the API and the built web app; the API serves the UI. PostgreSQL is not started by the
-compose file: it must already exist on a Docker network that the app can join.
+The default image contains the API and the built web app; the API serves the UI.
 
 ## Limitations
 
@@ -272,6 +314,9 @@ compose file: it must already exist on a Docker network that the app can join.
   a login, but the document-processing, compliance and regulation endpoints are not: anyone who can reach the
   service can use them, including loading regulations. Do not expose it to the Internet as it is; put it behind a
   proxy with access control, and set a strong `AUTH_SECRET` (anyone who knows the secret can forge a login).
+- **Uploaded content is retained.** The file is not kept, but its extracted text and figures are saved to the
+  database without a link to any account and cannot be deleted from the app. Do not upload documents you are not
+  allowed to retain. See [What is stored](#what-is-stored).
 - **The rules check consistency and presence, not correctness or adequacy.** A document can pass every rule and
   still be wrong; a `REVIEW` can have an innocent explanation.
 - **Legal references are unverified.** The rules encode the authors' reading of the Companies Act, 2013, SS-2, the

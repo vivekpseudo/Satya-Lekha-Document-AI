@@ -99,19 +99,52 @@ docker exec <postgres-container> psql -U <superuser> \
 docker exec <postgres-container> psql -U <superuser> -d satya_lekha -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
-Create the extension yourself: `satya` is not a superuser. Find the network the container is on:
+Create the extension yourself: `satya` is not a superuser.
+
+**Give the app a private network to the database.** Rather than joining the network the other application already
+uses (which would let `app` reach all of that application's services), create a small network that holds only the
+database and the app, and attach the existing PostgreSQL container to it:
 
 ```bash
-docker inspect <postgres-container> --format '{{range $k,$v := .NetworkSettings.Networks}}{{println $k}}{{end}}'
+docker network create satya-db
+docker network connect satya-db <postgres-container>
 ```
+
+Then set `POSTGRES_NETWORK=satya-db` in `.env`. The compose file joins that network, so `app` reaches the database
+at `<postgres-container>:5432` and sees nothing else. The only thing the outside world reaches is `app`, through the
+reverse proxy.
+
+```
+reverse proxy ──► app ──(satya-db)──► <postgres-container>
+                                         │
+                                         └──(its own network)──► the other application's services
+```
+
+**`docker network connect` does not survive a recreated container.** If the other application's stack recreates the
+PostgreSQL container (a redeploy, `--force-recreate`, an image upgrade), the attachment is lost and Satya-Lekha
+loses its database until you run `docker network connect satya-db <postgres-container>` again. To make it permanent,
+add the network to that application's own compose file, under the PostgreSQL service:
+
+```yaml
+services:
+  <postgres-service>:
+    networks:
+      - <its-existing-network>
+      - satya-db
+networks:
+  satya-db:
+    external: true
+```
+
+If you prefer not to touch it, set `POSTGRES_NETWORK` to the network PostgreSQL is already on (find it with
+`docker inspect <postgres-container> --format '{{range $k,$v := .NetworkSettings.Networks}}{{println $k}}{{end}}'`).
+That works with no extra steps, but `app` can then reach every service on that network.
 
 Consequences of sharing a server:
 
 - **Backups:** a job that dumps only the other application's database does not cover `satya_lekha`. Dump it too
   (see [Backups](#backups)).
 - **Shared resources:** connections, memory and disk are shared, and upgrading PostgreSQL or pgvector affects both.
-- **Network:** `app` joins the database's network, so it can reach every other service on it, and they can reach
-  it. If the other application has a service called `app`, the name becomes ambiguous there: use container names.
 - **Optional hardening:** by default every role can connect to every database. `REVOKE CONNECT ON DATABASE
   <other-db> FROM PUBLIC;` followed by a `GRANT CONNECT` to the roles that need it stops `satya` connecting to
   the other application's database. Do this only if you know which roles that application uses.
